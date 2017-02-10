@@ -2,6 +2,7 @@ import json, importlib
 from os import listdir, walk, sep, environ
 from os.path import isfile, join, splitext
 
+
 #Path to graphviz location
 environ["PATH"] = "C:/Program Files (x86)/Graphviz2.38/bin"
 
@@ -13,8 +14,9 @@ profileVisualizationsPath = join('.', 'tests', 'profileVisualizations') + sep
 keywordsPath = join('.', 'core', 'keywords')
 
 #Database Path
-dbPath = "data/walkoff.db"
+dbPath = join('.', 'data', 'walkoff.db')
 
+workflow_path = join('.', 'data')
 
 TLS_version = "1.2"
 certificatePath = "data/auth/shortstop.public.pem"

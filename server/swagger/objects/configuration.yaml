@@ -1,0 +1,44 @@
+Configuration:
+  type: object
+#  properties:
+#    workflows_path:
+#      type: string
+#    templates_path:
+#      type: string
+#    db_path:
+#      type: string
+#    case_db_path:
+#      type: string
+#    default_appdevice_json:
+#      type: string
+#    default_case_json:
+#      type: string
+#    notifications:
+#      type: boolean
+#      default: true
+#    https:
+#      type: boolean
+#      default: false
+#    tls_version:
+#      type: number
+#      enum: [1.1, 1.2]
+#      deafult: 1.2
+#    host:
+#      type: string
+#      example: '127.0.1.1'
+#      default: '127.0.1.1'
+#    port:
+#      type: number
+#      example: 5255
+#      deafult: 5000
+#    walkoff_db_type:
+#      type: string
+#      example: mysql
+#      default: sqlite
+#    case_db_type:
+#      type: string
+#      example: postgresql
+#      default: sqlite
+#    num_threads:
+#      type: integer
+#      default: 5

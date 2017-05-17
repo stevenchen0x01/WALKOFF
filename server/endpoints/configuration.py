@@ -58,3 +58,6 @@ def update_configuration():
             current_app.logger.warning('Configuration attempted to be set by non authenticated user')
             return {"status": 'error: user is not authenticated'}, UNAUTHORIZED_ERROR
     return __func()
+
+def export_config(filename):
+    pass

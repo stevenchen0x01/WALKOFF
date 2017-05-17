@@ -1,29 +1,17 @@
-'/configuration/{key}':
+/configuration:
   get:
     tags:
       - Configuration
     summary: Read a configuration key
     description: ''
     operationId: server.endpoints.configuration.read_config_values
-    parameters:
-      - name: key
-        in: path
-        description: 'The configuration key '
-        required: true
-        type: string
     produces:
       - application/json
     responses:
       200:
         description: Success
         schema:
-          type: object
-          description: '{[key]: <current value>}'
-      461:
-        description: Configuration key does not exist.
-        schema:
-          $ref: '#/definitions/Error'
-/configuration/set:
+          $ref: '#/definitions/Configuration'
   post:
     tags:
       - Configuration
@@ -31,9 +19,49 @@
     description: ''
     operationId: server.endpoints.configuration.update_configuration
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
+    parameters:
+      - in: body
+        name: filename
+        description: name of the file to import
+        required: true
+        schema:
+          $ref: '#/definitions/Configuration'
     responses:
       200:
         description: Success
+      211:
+        description: Some invalid configuration parameters were found.
+/configuration/export:
+  post:
+    tags:
+      - Cases
+    summary: Export case data
+    description: ''
+    operationId: server.endpoints.configuration.export_config
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: filename
+        description: name of the file to import
+        required: false
+        schema:
+          required: [filename]
+          properties:
+            filename:
+              description: Name of the file containing the JSON to import
+              type: string
+              default: walkoff.config
+              example: walkoff_alternate.config
+    responses:
+      200:
+        description: Success
+      515:
+        description: Could not write to file.
+        schema:
+          $ref: '#/definitions/Error'

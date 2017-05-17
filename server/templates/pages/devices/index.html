@@ -4,10 +4,12 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='jqueryui.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css' ) }}">
 
-
-
         <style>
-            .selectColumn{
+            #main {
+                padding: 10px 15px;
+            }
+
+            /*.selectColumn{
                 border:solid;
                 height:800px;
             }
@@ -33,7 +35,7 @@
             h3 {
               font-family: 'Lato', sans-serif;
               font-weight: bold;
-              /*font-size: 20px;*/
+              font-size: 20px;
             }
             input {
               background-color: #F0F8FF;
@@ -63,42 +65,52 @@
             }
             .col-xs-2 {
               width: 30%;
-            }
+            }*/
 
         </style>
     </head>
     <body>
-
-
-
-        <div id="header">
-            <h1> Device Management </h1>
-        </div>
-        <div class="row content" id="main">
-            <div id="deviceSelect" class="col-xs-2">
-                <h3> Apps </h3>
-                <select id="appList" size="10" multiple></select>
-                <h3> Devices </h3>
-                <select id="deviceList" size="10" multiple></select>
-                <div>
-                    <button id="addNewDevice">Add New Device</button>
-                    <button id="removeDevice">Remove Device</button>
+        <div id="main">
+            <div class="row" id="header">
+                <h1> Device Management </h1>
+                <div class="col-xs-6">
+                    <h3> Devices </h3>
+                    <select id="deviceList"></select>
                 </div>
-
+                <div class="col-xs-6">
+                    <button class="btn btn-primary pull-right" id="addNewDevice">Add New Device</button>
+                </div>
             </div>
-            <div id="parameterSelect" class="col-xs-2 ">
-                <h3> Parameters </h3>
-                <form id="deviceForm">
-                    {% from "pages/_formhelpers.html" import render_field %}
-                    {{ render_field(form.name) }}
-                    {{ render_field(form.username) }}
-                    {{ render_field(form.pw) }}
-                    {{ render_field(form.ipaddr) }}
-                    {{ render_field(form.port) }}
-                </form>
-                <button id="editDevice" name="editDevice">Edit Device</button>
-            </div>
-
+            <form id="deviceForm">
+                {% from "pages/_formhelpers.html" import render_field %}
+                <div class="row">
+                    <h3> Parameters </h3>
+                    <div class="col-xs-4">
+                        {{ render_field(form.name) }}
+                    </div>
+                    <div class="col-xs-4">
+                        {{ render_field(form.username) }}
+                    </div>
+                    <div class="col-xs-4">
+                        {{ render_field(form.pw) }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-4">
+                        {{ render_field(form.ipaddr) }}
+                    </div>
+                    <div class="col-xs-4">
+                        {{ render_field(form.port) }}
+                    </div>
+                    <div class="col-xs-4">
+                        <label>App</h3>
+                        <select id="appList"></select>
+                    </div>
+                </div>
+            </form>
+            <div class="row">
+                <button id="editDevice" class="pull-right btn btn-primary" name="editDevice">Edit Device</button>
+                <button id="removeDevice" class="pull-right btn btn-danger">Remove Device</button>
             </div>
         </div>
         <script src="{{ url_for('static', filename='plugins/jQuery/jquery-2.2.3.min.js') }}"></script>

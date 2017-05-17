@@ -44,11 +44,11 @@
           $ref: '#/definitions/CreateRole'
     responses:
       '201':
-        description: Object created.
+        description: Role created.
         schema:
           $ref: '#/definitions/OutputRole'
       '462':
-        description: Object exists.
+        description: The Role already exists.
         schema:
           $ref: '#/definitions/Error'
   get:
@@ -65,7 +65,7 @@
         schema:
           $ref: '#/definitions/OutputRole'
       '461':
-        description: Object does not exist.
+        description: The Role does not exist.
         schema:
           $ref: '#/definitions/Error'
   post:
@@ -81,7 +81,7 @@
     parameters:
       - in: body
         name: body
-        description: Updated fields for the role object
+        description: Updated fields for the Role object
         required: true
         schema:
           $ref: '#/definitions/UpdateRole'
@@ -91,6 +91,6 @@
         schema:
           $ref: '#/definitions/OutputRole'
       '461':
-        description: Object does not exist.
+        description: The role does not exist.
         schema:
           $ref: '#/definitions/Error'

@@ -1,4 +1,4 @@
-Trigger:
+CreateTrigger:
     type: object
     required: [conditional, playbook, workflow]
     properties:
@@ -18,14 +18,33 @@ Trigger:
         description: The name of the workflow that relates to this trigger
         type: string
         example: HelloWorldWorkflow
-DisplayTrigger:
+UpdateTrigger:
     type: object
     properties:
       name:
         description: Name of the trigger
         type: string
         example: triggerOne
-      conditions:
+      conditional:
+        description: String representation of a list of Flag objects
+        type: string
+        example: '[{"flag": "regMatch", "args": [{"key": "regex", "value": "(.*)"}], "filters": []}]'
+      playbook:
+        description: The name of the playbook that relates to this trigger
+        type: string
+        example: HelloWorldPlaybook
+      workflow:
+        description: The name of the workflow that relates to this trigger
+        type: string
+        example: HelloWorldWorkflow
+OutputTrigger:
+    type: object
+    properties:
+      name:
+        description: Name of the trigger
+        type: string
+        example: triggerOne
+      conditional:
         description: A list of Flag objects (see Flag for further description)
         type: array
         items:
@@ -38,3 +57,28 @@ DisplayTrigger:
         description: The name of the workflow that relates to this trigger
         type: string
         example: HelloWorldWorkflow
+TriggerListener:
+  type: object
+  required: [data]
+  properties:
+    data:
+      description: Data for the trigger listener
+      type: string
+      example: hellohellohello
+    input:
+      description: A list of inputs (key, value pairs) for the trigger listener
+      type: array
+      items:
+        type: object
+        required:
+          - key
+          - value
+        properties:
+          key:
+            description: Name of the key for the input argument
+            type: string
+            example: call
+          value:
+            description: Value of the associated key for the input argument
+            type: string
+            example: testinput

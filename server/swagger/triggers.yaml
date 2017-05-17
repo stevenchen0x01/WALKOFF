@@ -17,7 +17,7 @@
             triggers:
               type: array
               items:
-                $ref: '#/definitions/DisplayTrigger'
+                $ref: '#/definitions/OutputTrigger'
 /execution/listener/execute:
   post:
     tags:
@@ -26,9 +26,16 @@
     description: ''
     operationId: server.endpoints.triggers.listener
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
+    parameters:
+      - in: body
+        name: triggerlistener
+        description: Data and input for the trigger listener
+        required: true
+        schema:
+          $ref: '#/definitions/TriggerListener'
     responses:
       200:
         description: Success
@@ -46,28 +53,21 @@
     description: ''
     operationId: server.endpoints.triggers.create_trigger
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     parameters:
-      - in: formData
-        name: conditional
-        description: String representation of a list of Flag objects such as "[{"flag"; "regMatch", "args"; [{"key"; "regex", "value"; "(.*)"}], "filters"; []}]" (replace ; with colon)
-        type: string
+      - in: body
+        name: trigger
+        description: The Trigger object to be created
         required: true
-      - in: formData
-        name: playbook
-        description: The name of the playbook that relates to this trigger such as HelloWorldPlaybook
-        type: string
-        required: true
-      - in: formData
-        name: workflow
-        description: The name of the workflow that relates to this trigger such as HelloWorldWorkflow
-        type: string
-        required: true
+        schema:
+          $ref: '#/definitions/CreateTrigger'
     responses:
       201:
         description: Trigger created.
+        schema:
+          $ref: '#/definitions/OutputTrigger'
       462:
         description: Trigger already exists.
         schema:
@@ -88,11 +88,7 @@
       200:
         description: Success
         schema:
-          description: The trigger object
-          type: object
-          properties:
-            trigger:
-              $ref: '#/definitions/DisplayTrigger'
+          $ref: '#/definitions/OutputTrigger'
       461:
         description: Trigger does not exist.
         schema:
@@ -104,28 +100,21 @@
     description: ''
     operationId: server.endpoints.triggers.update_trigger
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     parameters:
-      - in: formData
-        name: conditional
-        description: String representation of a list of Flag objects such as "[{"flag"; "regMatch", "args"; [{"key"; "regex", "value"; "(.*)"}], "filters"; []}]" (replace ; with colon)
-        type: string
+      - in: body
+        name: trigger
+        description: The fields of the Trigger object to be updated.
         required: true
-      - in: formData
-        name: playbook
-        description: The name of the playbook that relates to this trigger such as HelloWorldPlaybook
-        type: string
-        required: true
-      - in: formData
-        name: workflow
-        description: The name of the workflow that relates to this trigger such as HelloWorldWorkflow
-        type: string
-        required: true
+        schema:
+          $ref: '#/definitions/UpdateTrigger'
     responses:
       200:
         description: Success
+        schema:
+          $ref: '#/definitions/OutputTrigger'
       461:
         description: Trigger does not exist.
         schema:

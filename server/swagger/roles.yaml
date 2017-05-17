@@ -75,7 +75,7 @@
     description: ''
     operationId: server.endpoints.roles.update_role
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     parameters:

@@ -1,12 +1,65 @@
-Workflow:
+InputPlaybook:
+  type: object
+  properties:
+    name:
+      description: Name of the playbook
+      type: string
+      example: HelloWorldPlaybook
+    workflows:
+      description: Workflows in this this playbook
+      type: array
+      items:
+        type: string
+      example: [workflow1, workflow2, thisOneWorkflow, thatworkflow]
+    playbook_template:
+      description: Name of the template to use to create the playbook
+      type: string
+      example: ACommonlyUsedPlaybookName
+    workflow_template:
+      description: Name of the template used to create workflows
+      type: string
+      example: ThatCommonWorkflowName
+
+OutputPlaybook:
+  type: object
+  required: [name, workflows]
+  properties:
+    name:
+      description: Name of the playbook
+      type: string
+      example: HelloWorldPlaybook
+    workflows:
+      description: Workflows in this this playbook
+      type: array
+      items:
+        type: string
+      example: [workflow1, workflow2, thisOneWorkflow, thatworkflow]
+
+InputWorkflow:
+  type: object
+  description: A workflow object
+  properties:
+    steps:
+      description: The steps definied in this workflow. Form of '{step_name -> step}'
+      type: object
+    options:
+      $ref: '#/definitions/WorkflowOptions'
+    start:
+      description: Name of the starting step
+      type: string
+      default: start
+      example: step1
+    template:
+      description: Identifer of the workflow to use as the template for the workflow
+      $ref: '#/definitions/WorkflowIdentifier'
+
+OutputWorkflow:
   type: object
   required: [name]
   description: A workflow object
   properties:
     name:
-      description: The name of the workflow. Composed of both its enclosing playbook and its own name
-      type: string
-      example: HelloWorldWorkflow
+      $ref: '#/definitions/WorkflowIdentifier'
     steps:
       description: The steps definied in this workflow. Form of '{step_name -> step}'
       type: object
@@ -21,6 +74,20 @@ Workflow:
       type: string
       default: start
       example: step1
+
+WorkflowIdentifier:
+  type: object
+  required: [playbook, workflow]
+  description: Identifier of a workflow
+  properties:
+    playbook:
+      description: Name of the playbook to which the workflow belongs
+      type: string
+      example: HelloWorldPlaybook
+    workflow:
+      description: Name of the workflow
+      type: string
+      example: FirstHelloWorldWorkflow
 
 WorkflowOptions:
   type: object
@@ -177,7 +244,7 @@ Filter:
 Argument:
   type: object
   required: [key, value]
-  description: Obejct used for passing an argument into various actions
+  description: Object used for passing an argument into various actions
   properties:
     key:
       type: string
@@ -191,12 +258,10 @@ Argument:
       example: string
       enum: [str, string, unicode, int]
 
-WorkflowFromCytoscape:
+WorkflowUuid:
   type: object
+  required: [uuid]
+  description: Uuid of an executing worflow
   properties:
-    start:
-      description: starting step name
+    uuid:
       type: string
-      example: step1
-    cytoscape:
-      type: object

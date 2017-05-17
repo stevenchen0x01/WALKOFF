@@ -17,9 +17,9 @@
               type: array
               items:
                 $ref: '#/definitions/Case'
-/cases/{case}:
+/cases/{case_name}:
   parameters:
-    - name: case
+    - name: case_name
       in: path
       description: The name of the case
       required: true
@@ -32,12 +32,20 @@
     operationId: server.endpoints.cases.create_case
     produces:
       - application/json
+    consumes:
+      - application/json
+    parameters:
+      - in: body
+        name: case
+        description: Created subscription object
+        required: true
+        schema:
+          $ref: '#/definitions/Case'
     responses:
       201:
-        description: Object created
+        description: Case created
         schema:
-          type: object
-          description: All the cases and their subscriptions. Form of '{case_name -> CaseSubscriptions}'
+          $ref: '#/definitions/Case'
       462:
         description: Case already exists.
         schema:
@@ -54,10 +62,7 @@
       200:
         description: Success
         schema:
-          type: object
-          properties:
-            case:
-              $ref: '#/definitions/Case'
+          $ref: '#/definitions/Case'
       461:
         description: Case does not exist.
         schema:
@@ -69,30 +74,21 @@
     description: ''
     operationId: server.endpoints.cases.update_case
     consumes:
-      - application/x-www-form-urlencoded
+      - application/json
     produces:
       - application/json
     parameters:
-      - in: formData
-        name: name
-        description: New name of the case.
-        required: false
-        type: string
-      - in: formData
-        name: note
-        description: Note to add to the case
-        required: false
-        type: string
+      - in: body
+        name: case
+        description: Created subscription object
+        required: true
+        schema:
+          $ref: '#/definitions/Case'
     responses:
       200:
         description: Success
         schema:
-          type: object
-          properties:
-            cases:
-              type: array
-              items:
-                $ref: '#/definitions/Case'
+          $ref: '#/definitions/Case'
       461:
         description: Case does not exist.
         schema:
@@ -117,22 +113,36 @@
   get:
     tags:
       - Cases
-    summary: Import case data
+    summary: Import case subscriptions
     description: ''
     operationId: server.endpoints.cases.import_cases
     consumes:
-      - application/x-www-form-urlencoded
+      - application/json
     produces:
       - application/json
     parameters:
-      - in: formData
+      - in: body
         name: filename
-        description: Filename of JSON to import into case database.
+        description: name of the file to import
         required: false
-        type: string
+        schema:
+          required: [filename]
+          properties:
+            filename:
+              description: Name of the file containing the JSON to import
+              type: string
+              default: cases.json
+              example: another_cases.json
     responses:
       200:
         description: Success
+        schema:
+          type: object
+          properties:
+            cases:
+              type: array
+              items:
+                $ref: '#/definitions/Case'
       463:
         description: Invalid JSON in file.
         schema:
@@ -150,15 +160,22 @@
     description: ''
     operationId: server.endpoints.cases.export_cases
     consumes:
-      - application/x-www-form-urlencoded
+      - application/json
     produces:
       - application/json
     parameters:
-      - in: formData
+      - in: body
         name: filename
-        description: Filename of JSON to import into case database.
+        description: name of the file to import
         required: false
-        type: string
+        schema:
+          required: [filename]
+          properties:
+            filename:
+              description: Name of the file containing the JSON to import
+              type: string
+              default: cases.json
+              example: another_cases.json
     responses:
       200:
         description: Success
@@ -166,22 +183,6 @@
         description: Could not write to file.
         schema:
           $ref: '#/definitions/Error'
-
-/cases/subscriptions:
-  get:
-    tags:
-      - Subscriptions
-    summary: Read all subscriptions for all cases
-    description: ''
-    operationId: server.endpoints.cases.read_all_subscriptions
-    produces:
-      - application/json
-    responses:
-      200:
-        description: Success
-        schema:
-          type: object
-          description: All the cases and their subscriptions. Form of '{case_name -> CaseSubscriptions}'
 
 /cases/{case}/events:
   get:
@@ -202,9 +203,13 @@
       200:
         description: Success
         schema:
-          type: array
-          items:
-            $ref: '#/definitions/Event'
+          type: object
+          required: [events]
+          properties:
+            events:
+              type: array
+              items:
+                $ref: '#/definitions/Event'
       461:
         description: Case does not exist.
         schema:
@@ -234,13 +239,18 @@
         description: Created subscription object
         required: true
         schema:
-          $ref: '#/definitions/SubscriptionChange'
+          $ref: '#/definitions/InputSubscription'
     responses:
       201:
-        description: Object created
+        description: Subscription created
         schema:
           type: object
-          description: All the cases and their subscriptions. Form of '{case_name -> CaseSubscriptions}'
+          required: [subscriptions]
+          properties:
+            subscriptions:
+              type: array
+              items:
+                $ref: '#/definitions/Subscription'
       461:
         description: Case does not exist.
         schema:
@@ -257,8 +267,13 @@
       200:
         description: Success
         schema:
-          description: The subscriptions of the case
-          $ref: '#definitions/CaseSubscription'
+          type: object
+          required: [subscriptions]
+          properties:
+            subscriptions:
+              type: array
+              items:
+                $ref: '#/definitions/Subscription'
       461:
         description: Case does not exist.
         schema:
@@ -279,13 +294,18 @@
         description: Edited subscription object
         required: true
         schema:
-          $ref: '#/definitions/SubscriptionChange'
+          $ref: '#/definitions/InputSubscription'
     responses:
       200:
         description: Success
         schema:
           type: object
-          description: All the cases and their subscriptions. Form of '{case_name -> CaseSubscriptions}'
+          required: [subscriptions]
+          properties:
+            subscriptions:
+              type: array
+              items:
+                $ref: '#/definitions/Subscription'
       461:
         description: Case or element does not exist.
         schema:
@@ -306,16 +326,7 @@
         description: Ancestry of execution element
         required: true
         schema:
-          type: object
-          required:
-            - ancestry
-          properties:
-            ancestry:
-              description: The ancestry of execution element whose subscription is to be deleted
-              type: array
-              items:
-                type: string
-              example: [defaultController, myplaybook, step3]
+          $ref: '#/definitions/InputSubscription'
     responses:
       200:
         description: Success

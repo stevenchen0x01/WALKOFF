@@ -11,13 +11,13 @@
       200:
         description: Success
         schema:
-          description: A list of usernames
-          type: array
-          items:
-            type: string
-          example:
-            - administrator
-            - guest
+          description: A list of Users
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/definitions/OutputUser'
 /users/{user_name}:
   parameters:
     - name: user_name
@@ -32,7 +32,7 @@
     description: ''
     operationId: server.endpoints.users.create_user
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     parameters:
@@ -41,10 +41,12 @@
         description: The new user object to be created
         required: true
         schema:
-          $ref: '#/definitions/User'
+          $ref: '#/definitions/CreateUser'
     responses:
       201:
         description: User created.
+        schema:
+          $ref: '#/definitions/OutputUser'
       462:
         description: Could not create user <username>. User already exists.
         schema:
@@ -61,11 +63,7 @@
       200:
         description: Success
         schema:
-          description: A list of user objects
-          type: object
-          properties:
-            user:
-              $ref: '#/definitions/DisplayUser'
+          $ref: '#/definitions/OutputUser'
       461:
         description: Could not display user <username>. User does not exist.
         schema:
@@ -77,7 +75,7 @@
     description: ''
     operationId: server.endpoints.users.update_user
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     parameters:
@@ -86,16 +84,12 @@
         description: Updated fields for the user object
         required: true
         schema:
-          $ref: '#/definitions/EditUser'
+          $ref: '#/definitions/UpdateUser'
     responses:
       200:
         description: Success
         schema:
-          description: A list of user objects
-          type: object
-          properties:
-            user:
-              $ref: '#/definitions/DisplayUser'
+          $ref: '#/definitions/OutputUser'
       461:
         description: Could not edit user <username>. User does not exist.
         schema:
@@ -107,7 +101,7 @@
     description: ''
     operationId: server.endpoints.users.delete_user
     consumes:
-      - multipart/form-data
+      - application/json
     produces:
       - application/json
     responses:

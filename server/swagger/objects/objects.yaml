@@ -11,15 +11,22 @@ ActionArgument:
   properties:
     name:
       type: string
+      example: count
     type:
       type: string
+      example: int
 Action:
   type: object
-  required: [args]
+  required: [name, args]
   properties:
+    name:
+      description: name of the action
+      type: string
+      example: MyAction
     description:
       description: description of the action
       type: string
+      example: This action does a really cool thing
     args:
       description: accepted arguments to the action
       type: array

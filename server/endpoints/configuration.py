@@ -59,5 +59,6 @@ def update_configuration():
             return {"status": 'error: user is not authenticated'}, UNAUTHORIZED_ERROR
     return __func()
 
+
 def export_config(filename):
     pass

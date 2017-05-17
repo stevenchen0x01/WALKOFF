@@ -26,9 +26,11 @@ Configuration:
       type: string
       default: ./data/cases.json
     notifications:
+      description: Enable desktop notifications?
       type: boolean
       default: true
     https:
+      description: Enable HTTPS
       type: boolean
       default: false
     tls_version:
@@ -44,13 +46,16 @@ Configuration:
       example: 5255
       default: 5000
     walkoff_db_type:
+      description: Database type to use for WALKOFF main database
       type: string
       example: mysql
       default: sqlite
     case_db_type:
+      description: Database type to use for WALKOFF case database
       type: string
       example: postgresql
       default: sqlite
     num_threads:
+      description: Number of threads to use for processing workflows
       type: integer
       default: 5

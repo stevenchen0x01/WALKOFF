@@ -65,8 +65,10 @@
           required: [filters]
           properties:
             filters:
-              description: All the available filters. Form of '{filter_name -> Action}'
-              type: object
+              description: All the available filters.
+              type: array
+              items:
+                $ref: '#/definitions/Action'
 
 /flags:
   get:
@@ -84,9 +86,10 @@
           type: object
           required: [flags]
           properties:
-            filters:
-              description: All the available flags. Form of '{flag_name -> Action}'
-              type: object
+            flags:
+              type: array
+              items:
+                $ref: '#/definitions/Action'
 
 /interface/{interface_name}:
   post:
@@ -155,4 +158,22 @@
         description: Success
         schema:
           type: object
-          description: All the wigdets for all apps. Form of '{app_name -> [widget_name]}'
+          description: All the wigdets for all apps.
+          required: [widgets]
+          properties:
+            widgets:
+              type: array
+              items:
+                type: object
+                required: [app_name, widgets]
+                properties:
+                  app_name:
+                    description: Name of the app
+                    type: string
+                    example: LinuxShell
+                  widgets:
+                    description: Widgets associated with the app
+                    type: array
+                    items:
+                      type: string
+                    example: [widget1, display2, shell_monitor]

@@ -20,6 +20,7 @@ from tests.util.assertwrappers import orderless_list_compare
 from tests.util.case_db_help import executed_steps, setup_subscriptions_for_step
 from core.controller import _WorkflowKey
 from timeit import default_timer
+from server import flaskserver
 try:
     from importlib import reload
 except ImportError:
@@ -61,7 +62,12 @@ class TestWorkflowManipulation(unittest.TestCase):
         setup_subscriptions_for_step(self.testWorkflow.name, step_names)
         start = datetime.utcnow()
         # Check that the workflow executed correctly post-manipulation
-        self.controller.execute_workflow(*self.id_tuple)
+        workflow = self.controller.get_workflow("simpleDataManipulationWorkflow", "helloWorldWorkflow")
+        workflow.execute()
+        # self.c.execute_workflow(*self.id_tuple)
+
+        with flaskserver.running_context.flask_app.app_context():
+            flaskserver.running_context.shutdown_threads()
 
         steps = executed_steps('defaultController', self.testWorkflow.name, start, datetime.utcnow())
         self.assertEqual(len(steps), 2)
@@ -223,12 +229,16 @@ class TestWorkflowManipulation(unittest.TestCase):
         def step_1_about_to_begin_listener(sender, **kwargs):
             if sender.name == '1':
                 gevent.spawn(pause_resume_thread)
+                gevent.sleep(0)
 
         FunctionExecutionSuccess.connect(step_2_finished_listener)
         StepInputValidated.connect(step_1_about_to_begin_listener)
 
         start = default_timer()
-        uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        # self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        workflow = self.c.get_workflow("pauseWorkflowTest", "pauseWorkflow")
+        workflow.execute()
+
         waiter.wait(timeout=5)
         duration = default_timer() - start
         self.assertTrue(2.5 < duration < 5)
@@ -251,12 +261,16 @@ class TestWorkflowManipulation(unittest.TestCase):
         def step_1_about_to_begin_listener(sender, **kwargs):
             if sender.name == '1':
                 gevent.spawn(pause_resume_thread)
+                gevent.sleep(0)
 
         FunctionExecutionSuccess.connect(step_2_finished_listener)
         StepInputValidated.connect(step_1_about_to_begin_listener)
 
         start = default_timer()
-        self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        # self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        workflow = self.c.get_workflow("pauseWorkflowTest", "pauseWorkflow")
+        workflow.execute()
+
         waiter.wait(timeout=5)
         duration = default_timer() - start
         self.assertTrue(2.5 < duration < 5)

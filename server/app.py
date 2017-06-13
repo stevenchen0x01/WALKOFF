@@ -1,5 +1,7 @@
 import os
 import logging
+import sys
+
 from jinja2 import Environment, FileSystemLoader
 from core import helpers
 from core.config import paths
@@ -7,7 +9,7 @@ import core.config.config
 import connexion
 from flask_security.utils import encrypt_password
 from core.helpers import format_db_path
-from gevent import monkey
+
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +105,19 @@ def __register_all_app_widget_blueprints(flaskapp, app_module):
                 for blueprint in blueprints:
                     __register_app_blueprint(flaskapp, blueprint, url_prefix)
 
+def create_wsgi_config():
+    infile_name = ''
+    if sys.platform.startswith('win'):
+        infile_name = 'walkoff_windows_template.conf'
+    elif sys.platform.startswith('linux'):
+        infile_name = 'walkoff_linux_template.conf'
+
+    with open(infile_name, 'r') as infile, open('WALKOFF.conf', 'w') as outfile:
+        for line in infile:
+            if 'PATH' in line:
+                line = line.replace('PATH', paths.wsgi_config_path)
+            outfile.write(line)
+
 
 def create_app():
     from .blueprints.events import setup_case_stream
@@ -129,13 +144,14 @@ def create_app():
     register_blueprints(_app)
     core.config.config.initialize()
     setup_case_stream()
-    monkey.patch_all()
+    # monkey.patch_all()
     return _app
 
 
 # Template Loader
 env = Environment(loader=FileSystemLoader("apps"))
 app = create_app()
+create_wsgi_config()
 
 
 # Creates Test Data

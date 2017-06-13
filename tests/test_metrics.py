@@ -9,15 +9,20 @@ class MetricsTest(ServerTestCase):
     def setUp(self):
         metrics.app_metrics = {}
         metrics.workflow_metrics = {}
+        server.running_context.init_threads()
 
     def test_action_metrics(self):
         server.running_context.controller.load_workflows_from_file(path=config.test_workflows_path +
                                                                         'multistepError.playbook')
 
-        server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
+        workflow = server.running_context.controller.get_workflow("multistepError", "multiactionErrorWorkflow")
+        workflow.execute()
+
+        # server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
 
         with server.running_context.flask_app.app_context():
             server.running_context.shutdown_threads()
+
         self.assertListEqual(list(metrics.app_metrics.keys()), ['HelloWorld'])
         orderless_list_compare(self, list(metrics.app_metrics['HelloWorld'].keys()), ['count', 'actions'])
 
@@ -52,11 +57,27 @@ class MetricsTest(ServerTestCase):
         tiered_parent_key = construct_workflow_name_key('tieredWorkflow', 'parentWorkflow')
         tiered_child_key = construct_workflow_name_key('tieredWorkflow', 'childWorkflow')
         multiaction_key = construct_workflow_name_key('multiactionWorkflowTest', 'multiactionWorkflow')
-        server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
-        server.running_context.controller.execute_workflow('tieredWorkflow', 'parentWorkflow')
-        server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
-        server.running_context.controller.execute_workflow('tieredWorkflow', 'parentWorkflow')
-        server.running_context.controller.execute_workflow('multiactionWorkflowTest', 'multiactionWorkflow')
+
+        # server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
+        # server.running_context.controller.execute_workflow('tieredWorkflow', 'parentWorkflow')
+        # server.running_context.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
+        # server.running_context.controller.execute_workflow('tieredWorkflow', 'parentWorkflow')
+        # server.running_context.controller.execute_workflow('multiactionWorkflowTest', 'multiactionWorkflow')
+
+        workflow = server.running_context.controller.get_workflow("multistepError", "multiactionErrorWorkflow")
+        workflow.execute()
+
+        workflow = server.running_context.controller.get_workflow("tieredWorkflow", "parentWorkflow")
+        workflow.execute()
+
+        workflow = server.running_context.controller.get_workflow("multistepError", "multiactionErrorWorkflow")
+        workflow.execute()
+
+        workflow = server.running_context.controller.get_workflow("tieredWorkflow", "parentWorkflow")
+        workflow.execute()
+
+        workflow = server.running_context.controller.get_workflow("multiactionWorkflowTest", "multiactionWorkflow")
+        workflow.execute()
 
         with server.running_context.flask_app.app_context():
             server.running_context.shutdown_threads()

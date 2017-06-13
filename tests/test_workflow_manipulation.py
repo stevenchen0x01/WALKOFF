@@ -47,7 +47,9 @@ class TestWorkflowManipulation(unittest.TestCase):
         setup_subscriptions_for_step(self.testWorkflow.name, step_names)
         start = datetime.utcnow()
         # Check that the workflow executed correctly post-manipulation
-        self.c.execute_workflow(*self.id_tuple)
+        workflow = self.c.get_workflow("simpleDataManipulationWorkflow", "helloWorldWorkflow")
+        workflow.execute()
+        # self.c.execute_workflow(*self.id_tuple)
 
         with flask_server.running_context.flask_app.app_context():
             flask_server.running_context.shutdown_threads()
@@ -399,12 +401,16 @@ class TestWorkflowManipulation(unittest.TestCase):
         def step_1_about_to_begin_listener(sender, **kwargs):
             if sender.name == '1':
                 gevent.spawn(pause_resume_thread)
+                gevent.sleep(0)
 
         FunctionExecutionSuccess.connect(step_2_finished_listener)
         StepInputValidated.connect(step_1_about_to_begin_listener)
 
         start = default_timer()
-        self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        # self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        workflow = self.c.get_workflow("pauseWorkflowTest", "pauseWorkflow")
+        workflow.execute()
+
         waiter.wait(timeout=5)
         duration = default_timer() - start
         self.assertTrue(2.5 < duration < 5)
@@ -426,12 +432,16 @@ class TestWorkflowManipulation(unittest.TestCase):
         def step_1_about_to_begin_listener(sender, **kwargs):
             if sender.name == '1':
                 gevent.spawn(pause_resume_thread)
+                gevent.sleep(0)
 
         FunctionExecutionSuccess.connect(step_2_finished_listener)
         StepInputValidated.connect(step_1_about_to_begin_listener)
 
         start = default_timer()
-        self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        # self.c.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+        workflow = self.c.get_workflow("pauseWorkflowTest", "pauseWorkflow")
+        workflow.execute()
+
         waiter.wait(timeout=5)
         duration = default_timer() - start
         self.assertTrue(2.5 < duration < 5)

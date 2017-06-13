@@ -1,6 +1,6 @@
 import os
 from collections import namedtuple
-from concurrent import futures
+from multiprocessing import Pool, Manager
 from copy import deepcopy
 from os import sep
 from xml.etree import cElementTree
@@ -21,9 +21,8 @@ from core.helpers import locate_workflows_in_directory, construct_workflow_name_
 
 _WorkflowKey = namedtuple('WorkflowKey', ['playbook', 'workflow'])
 
-pool = None
-workflows = None
 threading_is_initialized = False
+NUM_PROCESSES = 2
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +31,14 @@ def initialize_threading():
     """Initializes the threadpool.
     """
     global pool
-    global workflows
+    global queue
     global threading_is_initialized
 
-    workflows = []
-
-    pool = futures.ThreadPoolExecutor(max_workers=core.config.config.num_threads)
+    manager = Manager()
+    queue = manager.Queue()
+    pool = Pool(processes=NUM_PROCESSES)
+    # for i in range(NUM_PROCESSES):
+    #     pool.apply_async(execute_workflow_worker, (queue,))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -46,19 +47,17 @@ def shutdown_pool():
     """Shuts down the threadpool.
     """
     global pool
-    global workflows
     global threading_is_initialized
+    global queue
 
-    for future in futures.as_completed(workflows):
-        future.result(timeout=core.config.config.threadpool_shutdown_timeout_sec)
-    pool.shutdown(wait=False)
+    pool.close()
 
-    workflows = []
+    pool.join()
     threading_is_initialized = False
     logger.debug('Controller thread pool shutdown')
 
 
-def execute_workflow_worker(workflow, subs, start=None):
+def execute_workflow_worker(workflow, subs, start):
     """Executes the workflow in a multi-threaded fashion.
     
     Args:
@@ -69,12 +68,17 @@ def execute_workflow_worker(workflow, subs, start=None):
     Returns:
         "Done" when the workflow has finished execution.
     """
+    # while True:
+    #     while not queue.empty():
+    #         workflow, subs, start = queue.get()
+    #         subscription.set_subscriptions(subs)
+    #         print("executing workflow: "+workflow.name)
+    #         workflow.execute(start=start)
+    #         print("done executing")
+
     subscription.set_subscriptions(subs)
-    if start is not None:
-        workflow.execute(start=start)
-    else:
-        workflow.execute()
-    return "done"
+    workflow.execute(start=start)
+    return
 
 
 class Controller(object):
@@ -359,7 +363,7 @@ class Controller(object):
             start (str, optional): The name of the first step. Defaults to "start".
         """
         global pool
-        global workflows
+        global queue
         global threading_is_initialized
 
         key = _WorkflowKey(playbook_name, workflow_name)
@@ -372,10 +376,12 @@ class Controller(object):
                 initialize_threading()
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
-                workflows.append(pool.submit(execute_workflow_worker, workflow, subs, start))
+                # queue.put((workflow, subs, start))
+                pool.apply_async(execute_workflow_worker, (workflow, subs, start,))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
-                workflows.append(pool.submit(execute_workflow_worker, workflow, subs))
+                # queue.put((workflow, subs, None))
+                pool.apply_async(execute_workflow_worker, (workflow, subs, start,))
             callbacks.SchedulerJobExecuted.send(self)
         else:
             logger.error('Attempted to execute playbook which does not exist in controller')

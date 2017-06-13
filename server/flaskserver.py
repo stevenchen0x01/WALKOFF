@@ -6,7 +6,7 @@ import logging
 from flask import render_template, redirect, url_for
 from flask_security import login_required, auth_token_required, current_user, roles_accepted
 from flask_security.utils import encrypt_password
-from gevent import monkey
+# from gevent import monkey
 import xml.dom.minidom as minidom
 from xml.etree import ElementTree
 import core.config.config
@@ -21,7 +21,7 @@ from . import database, interface
 from server import app
 
 
-monkey.patch_all()
+# monkey.patch_all()
 
 urls = ['/', '/key', '/playbooks', '/configuration', '/interface', '/execution/listener',
         '/execution/listener/triggers', '/metrics',

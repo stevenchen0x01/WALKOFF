@@ -1,16 +1,17 @@
 import os
 import logging
+import sys
 
 from jinja2 import Environment, FileSystemLoader
 from core import helpers
 from core.config import paths
 import core.config.config
 import connexion
-from gevent import monkey
+# from gevent import monkey
 from flask_security.utils import encrypt_password
 from core.helpers import format_db_path
 
-monkey.patch_all()
+# monkey.patch_all()
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,20 @@ def compose_yamls():
         composed_yaml.writelines(final_yaml)
 
 
+def create_wsgi_config():
+    infile_name = ''
+    if sys.platform.startswith('win'):
+        infile_name = 'walkoff_windows_template.conf'
+    elif sys.platform.startswith('linux'):
+        infile_name = 'walkoff_linux_template.conf'
+
+    with open(infile_name, 'r') as infile, open('WALKOFF.conf', 'w') as outfile:
+        for line in infile:
+            if 'PATH' in line:
+                line = line.replace('PATH', paths.wsgi_config_path)
+            outfile.write(line)
+
+
 def create_app():
     connexion_app = connexion.App(__name__, specification_dir='api/')
     _app = connexion_app.app
@@ -69,6 +84,7 @@ def create_app():
 # Template Loader
 env = Environment(loader=FileSystemLoader("apps"))
 app = create_app()
+create_wsgi_config()
 
 
 # Creates Test Data

@@ -4,7 +4,7 @@ import uuid
 from functools import partial
 from blinker import Signal
 import core.case.subscription as case_subscription
-from core.case import database
+from core.case.database import case_db
 
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_ADDED, EVENT_JOB_REMOVED, \
     EVENT_SCHEDULER_START, \
@@ -51,7 +51,7 @@ def __add_entry_to_case_db(sender, event, message_name):
     cases_to_add = [case for case in case_subscription.subscriptions
                     if case_subscription.is_case_subscribed(case, sender.ancestry, message_name)]
     if cases_to_add:
-        database.case_db.add_event(event, cases_to_add)
+        case_db.add_event(event, cases_to_add)
 
 
 def __add_entry_to_case_wrapper(sender, data, event_type, message_name, entry_message):

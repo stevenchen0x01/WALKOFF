@@ -235,8 +235,7 @@ class TestWorkflowManipulation(unittest.TestCase):
         StepInputValidated.connect(step_1_about_to_begin_listener)
 
         start = default_timer()
-        self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
-
+        uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
         waiter.wait(timeout=5)
         duration = default_timer() - start
         self.assertTrue(2.5 < duration < 5)

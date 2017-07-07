@@ -158,20 +158,23 @@ class Workflow(ExecutionElement):
     def pause(self):
         """Pauses the execution of the Workflow. The Workflow will pause execution before starting the next Step.
         """
-        if self.executor is not None:
-            logger.info('Pausing workflow {0}'.format(self.ancestry))
-            self.is_paused = True
+        # if self.executor is not None:
+        #     logger.info('Pausing workflow {0}'.format(self.ancestry))
+            # self.is_paused = True
+
+        logger.info('Pausing workflow {0}'.format(self.ancestry))
 
     def resume(self):
         """Resumes a Workflow that has previously been paused.
         """
-        try:
-            logger.info('Attempting to resume workflow {0}'.format(self.ancestry))
-            self.is_paused = False
-            self.executor.send(None)
-        except (StopIteration, AttributeError) as e:
-            logger.warning('Cannot resume workflow {0}. Reason: {1}'.format(self.ancestry, e))
-            pass
+        # try:
+        #     logger.info('Attempting to resume workflow {0}'.format(self.ancestry))
+            # self.is_paused = False
+            # self.executor.send(None)
+        # except (StopIteration, AttributeError) as e:
+        #     logger.warning('Cannot resume workflow {0}. Reason: {1}'.format(self.ancestry, e))
+        #     pass
+        logger.info('Attempting to resume workflow {0}'.format(self.ancestry))
 
     def resume_breakpoint_step(self):
         """Resumes a Workflow that has hit a breakpoint at a Step. This is used for debugging purposes.
@@ -183,7 +186,7 @@ class Workflow(ExecutionElement):
             logger.warning('Cannot resume workflow {0} from breakpoint. Reason: {1}'.format(self.ancestry, e))
             pass
 
-    def execute(self, start=None, start_input=''):
+    def execute(self, start=None, start_input='', queue=None):
         """Executes a Workflow by executing all Steps in the Workflow list of Step objects.
         
         Args:
@@ -193,24 +196,31 @@ class Workflow(ExecutionElement):
         logger.info('Executing workflow {0}'.format(self.ancestry))
         callbacks.WorkflowExecutionStart.send(self)
         start = start if start is not None else self.start_step
-        self.executor = self.__execute(start, start_input)
+        self.executor = self.__execute(start, start_input, queue)
         next(self.executor)
 
-    def __execute(self, start, start_input):
+    def __execute(self, start, start_input, queue):
         instances = {}
         total_steps = []
         steps = self.__steps(start=start)
         first = True
         for step in steps:
             logger.debug('Executing step {0} of workflow {1}'.format(step, self.ancestry))
-            while self.is_paused:
-                _ = yield
+            print("workflow in execution")
+            if queue and not queue.empty():
+                print("queue not empty, going to pause hopefully")
+                data = queue.get_nowait()
+                if data == 'pause':
+                    res = queue.get()
+                    if not res == 'resume':
+                        logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:
                 if step.name in self.breakpoint_steps:
                     _ = yield
                 callbacks.NextStepFound.send(self)
-                if step.device not in instances:
-                    instances[step.device] = Instance.create(step.app, step.device)
+                tuple = (step.app, step.device)
+                if tuple not in instances:
+                    instances[tuple] = Instance.create(step.app, step.device)
                     callbacks.AppInstanceCreated.send(self)
                     logger.debug('Created new app instance: App {0}, device {1}'.format(step.app, step.device))
                 step.render_step(steps=total_steps)
@@ -220,7 +230,7 @@ class Workflow(ExecutionElement):
                     if start_input:
                         self.__swap_step_input(step, start_input)
 
-                error_flag = self.__execute_step(step, instances[step.device])
+                error_flag = self.__execute_step(step, instances[tuple])
                 total_steps.append(step)
                 steps.send(error_flag)
                 self.accumulator[step.name] = step.output

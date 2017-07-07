@@ -35,14 +35,9 @@ def initialize_threading():
     """Initializes the threadpool.
     """
     global pool
-    global queue
     global threading_is_initialized
 
-    manager = Manager()
-    queue = manager.Queue()
     pool = Pool(processes=NUM_PROCESSES)
-    # for i in range(NUM_PROCESSES):
-    #     pool.apply_async(execute_workflow_worker, (queue,))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -52,7 +47,6 @@ def shutdown_pool():
     """
     global pool
     global threading_is_initialized
-    global queue
 
     pool.close()
 
@@ -61,7 +55,7 @@ def shutdown_pool():
     logger.debug('Controller thread pool shutdown')
 
 
-def execute_workflow_worker(workflow, subs, start):
+def execute_workflow_worker(workflow, subs, start, queue):
     """Executes the workflow in a multi-threaded fashion.
     
     Args:
@@ -74,16 +68,9 @@ def execute_workflow_worker(workflow, subs, start):
     Returns:
         "Done" when the workflow has finished execution.
     """
-    # while True:
-    #     while not queue.empty():
-    #         workflow, subs, start = queue.get()
-    #         subscription.set_subscriptions(subs)
-    #         print("executing workflow: "+workflow.name)
-    #         workflow.execute(start=start)
-    #         print("done executing")
-
     subscription.set_subscriptions(subs)
-    workflow.execute(start=start)
+    print("worker got "+workflow.name+" and executing it")
+    workflow.execute(start=start, queue=queue)
     return
 
 
@@ -98,6 +85,7 @@ class Controller(object):
         self.name = name
         self.workflows = {}
         self.workflow_status = {}
+        self.workflow_queue = {}
         self.load_all_workflows_from_directory(path=workflows_path)
         self.instances = {}
         self.tree = None
@@ -378,7 +366,6 @@ class Controller(object):
             start_input (dict, optional): The input to the starting step of the workflow
         """
         global pool
-        global queue
         global threading_is_initialized
         key = _WorkflowKey(playbook_name, workflow_name)
         if key in self.workflows:
@@ -390,14 +377,15 @@ class Controller(object):
             # If threading has not been initialized, initialize it.
             if not threading_is_initialized:
                 initialize_threading()
+            manager = Manager()
+            queue = manager.Queue()
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
-                # queue.put((workflow, subs, start))
-                pool.apply_async(execute_workflow_worker, (workflow, subs, start,))
+                pool.apply_async(execute_workflow_worker, (workflow, subs, start,queue,))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
-                # queue.put((workflow, subs, None))
-                pool.apply_async(execute_workflow_worker, (workflow, subs, start,))
+                pool.apply_async(execute_workflow_worker, (workflow, subs, start,queue,))
+            self.workflow_queue[uid] = queue
             callbacks.SchedulerJobExecuted.send(self)
             # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
             self.workflow_status[uid] = WORKFLOW_RUNNING
@@ -493,9 +481,12 @@ class Controller(object):
             workflow_name (str): The name of the workflow.
             uid (str): The uid of the workflow
         """
+        print("pausing workflow")
         workflow = self.get_workflow(playbook_name, workflow_name)
         if workflow and uid in self.workflow_status and self.workflow_status[uid] == WORKFLOW_RUNNING:
             logger.info('Pausing workflow {0}'.format(workflow.name))
+            if self.workflow_queue[uid]:
+                self.workflow_queue[uid].put('pause')
             workflow.pause()
             self.workflow_status[uid] = WORKFLOW_PAUSED
 
@@ -515,6 +506,8 @@ class Controller(object):
         if workflow:
             if validate_uuid in self.workflow_status and self.workflow_status[validate_uuid] == WORKFLOW_PAUSED:
                 logger.info('Resuming workflow {0}'.format(workflow.name))
+                if self.workflow_queue[validate_uuid]:
+                    self.workflow_queue[validate_uuid].put('resume')
                 workflow.resume()
                 self.workflow_status[validate_uuid] = WORKFLOW_RUNNING
                 return True

@@ -13,6 +13,16 @@ try:
     from importlib import reload as reload_module
 except ImportError:
     from imp import reload as reload_module
+
+__new_inspection = False
+if sys.version_info.major >= 3 and sys.version_info.minor >= 3:
+    from inspect import signature as getsignature
+
+    __new_inspection = True
+else:
+    from inspect import getargspec as getsignature
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +38,14 @@ def import_py_file(module_name, path_to_file):
     """
     if sys.version_info[0] == 2:
         from imp import load_source
-        imported = load_source(module_name, os.path.abspath(path_to_file))
+        import exceptions, warnings
+        with warnings.catch_warnings(record=True) as w:
+            imported = load_source(module_name, os.path.abspath(path_to_file))
+            if w:
+                mod_name = module_name.replace('.main','')
+                if not (type(w[-1].category) == type(exceptions.RuntimeWarning) or
+                        'Parent module \'apps.'+mod_name+'\' not found while handling absolute import' in w[-1].message):
+                    print(w[-1].message)
     else:
         from importlib import machinery
         loader = machinery.SourceFileLoader(module_name, os.path.abspath(path_to_file))
@@ -277,6 +294,8 @@ def import_all_apps(path=None, reload=False):
             import_app_main(app_name, path=path, reload=reload)
         except ImportError:
             logger.error('Directory {0} in apps path is not a python package. Cannot load.'.format(app_name))
+        except InvalidApi as e:
+            logger.error('App {0} has an invalid API: {0}'.format(e))
 
 
 def get_app_action_api(app, action):
@@ -471,3 +490,13 @@ def dereference_step_routing(input_, accumulator, message_prefix):
         else:
             return input_
 
+
+def get_function_arg_names(func):
+    if __new_inspection:
+        return list(getsignature(func).parameters.keys())
+    else:
+        return getsignature(func).args
+
+
+class InvalidApi(Exception):
+    pass

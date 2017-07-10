@@ -44,6 +44,8 @@ class Workflow(ExecutionElement):
         self.breakpoint_steps = []
         self.accumulator = {}
         self.uid = None
+        self.communication_queue = None
+        self.results_queue = None
 
     def reconstruct_ancestry(self, parent_ancestry):
         """Reconstructs the ancestry for a Workflow object. This is needed in case a workflow and/or playbook is renamed.
@@ -186,7 +188,7 @@ class Workflow(ExecutionElement):
         #     pass
         logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
 
-    def execute(self, start=None, start_input='', queue=None):
+    def execute(self, start=None, start_input=''):
         """Executes a Workflow by executing all Steps in the Workflow list of Step objects.
         
         Args:
@@ -195,34 +197,37 @@ class Workflow(ExecutionElement):
         """
         logger.info('Executing workflow {0}'.format(self.ancestry))
         callbacks.WorkflowExecutionStart.send(self)
+        self.results_queue.put(callbacks.WorkflowExecutionStart, None)
         start = start if start is not None else self.start_step
-        self.executor = self.__execute(start, start_input, queue)
+        self.executor = self.__execute(start, start_input)
         next(self.executor)
 
-    def __execute(self, start, start_input, queue):
+    def __execute(self, start, start_input):
         instances = {}
         total_steps = []
         steps = self.__steps(start=start)
         first = True
         for step in steps:
             logger.debug('Executing step {0} of workflow {1}'.format(step, self.ancestry))
-            if queue and not queue.empty():
-                data = queue.get_nowait()
+            if self.communication_queue and not self.communication_queue.empty():
+                data = self.communication_queue.get_nowait()
                 if data == 'pause':
                     print("PAUSED!")
-                    res = queue.get()
+                    res = self.communication_queue.get()
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:
                 if step.name in self.breakpoint_steps:
-                    res = queue.get()
+                    res = self.communication_queue.get()
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
                 callbacks.NextStepFound.send(self)
+                self.results_queue.put(callbacks.NextStepFound, None)
                 tuple = (step.app, step.device)
                 if tuple not in instances:
                     instances[tuple] = Instance.create(step.app, step.device)
                     callbacks.AppInstanceCreated.send(self)
+                    self.results_queue.put(callbacks.AppInstanceCreated, None)
                     logger.debug('Created new app instance: App {0}, device {1}'.format(step.app, step.device))
                 step.render_step(steps=total_steps)
 
@@ -255,6 +260,7 @@ class Workflow(ExecutionElement):
                             error_flag = yield child_step
                             child_step_generator.send(error_flag)
                         callbacks.WorkflowShutdown.send(self.options.children[child_name])
+                        self.results_queue.put(callbacks.WorkflowShutdown, None)
                     next_step = child_next_step
             current_name = self.__go_to_next_step(current=current_name, next_up=next_step)
             current = self.steps[current_name] if current_name is not None else None
@@ -266,10 +272,12 @@ class Workflow(ExecutionElement):
         try:
             step.set_input(start_input)
             callbacks.WorkflowInputValidated.send(self)
+            self.results_queue.put(callbacks.WorkflowInputValidated, None)
         except InvalidInput as e:
             logger.error('Cannot change input to workflow {0}. '
                          'Invalid input. Error: {1}'.format(self.name, str(e)))
             callbacks.WorkflowInputInvalid.send(self)
+            self.results_queue.put(callbacks.WorkflowInputInvalid, None)
 
     def __execute_step(self, step, instance):
         error_flag = False
@@ -281,9 +289,11 @@ class Workflow(ExecutionElement):
             step.execute(instance=instance(), accumulator=self.accumulator)
             data['step']['result'] = step.output
             callbacks.StepExecutionSuccess.send(self, data=json.dumps(data))
+            self.results_queue.put(callbacks.StepExecutionSuccess, json.dumps(data))
         except Exception as e:
             data['step']['result'] = step.output
             callbacks.StepExecutionError.send(self, data=json.dumps(data))
+            self.results_queue.put(callbacks.StepExecutionError, json.dumps(data))
             error_flag = True
             self.accumulated_risk += float(step.risk) / self.total_risk
             logger.debug('Step {0} of workflow {1} executed with error {2}'.format(step, self.ancestry, e))
@@ -299,6 +309,7 @@ class Workflow(ExecutionElement):
                     and type(self.options.children[child_name]).__name__ == 'Workflow'):
                 logger.debug('Executing child workflow {0} of workflow {1}'.format(child_name, self.ancestry))
                 callbacks.WorkflowExecutionStart.send(self.options.children[child_name])
+                self.results_queue.put(callbacks.WorkflowExecutionStart, None)
                 child_step_generator = self.options.children[child_name].__steps(start=child_start)
                 return child_step_generator, child_next, child_name
         return None, None
@@ -320,6 +331,7 @@ class Workflow(ExecutionElement):
                 logger.error('Result of workflow is neither string or a JSON-able. Cannot record')
                 result_str[step] = 'error: could not convert to JSON'
         callbacks.WorkflowShutdown.send(self, data=self.accumulator)
+        self.results_queue.put(callbacks.WorkflowShutdown, self.accumulator)
         logger.info('Workflow {0} completed. Result: {1}'.format(self.name, self.accumulator))
 
     def get_cytoscape_data(self):

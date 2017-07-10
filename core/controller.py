@@ -36,7 +36,9 @@ def initialize_threading():
     """
     global pool
     global threading_is_initialized
+    global workflow_results_queue
 
+    workflow_results_queue = Queue()
     pool = Pool(processes=NUM_PROCESSES)
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
@@ -55,7 +57,7 @@ def shutdown_pool():
     logger.debug('Controller thread pool shutdown')
 
 
-def execute_workflow_worker(workflow, subs, start, queue):
+def execute_workflow_worker(workflow, subs, start, communication_queue, workflow_results_queue):
     """Executes the workflow in a multi-threaded fashion.
     
     Args:
@@ -69,7 +71,9 @@ def execute_workflow_worker(workflow, subs, start, queue):
         "Done" when the workflow has finished execution.
     """
     subscription.set_subscriptions(subs)
-    workflow.execute(start=start, queue=queue)
+    workflow.communication_queue = communication_queue
+    workflow.results_queue = workflow_results_queue
+    workflow.execute(start=start)
     return
 
 
@@ -366,6 +370,8 @@ class Controller(object):
         """
         global pool
         global threading_is_initialized
+        global workflow_results_queue
+
         key = _WorkflowKey(playbook_name, workflow_name)
         if key in self.workflows:
 
@@ -376,14 +382,14 @@ class Controller(object):
             # If threading has not been initialized, initialize it.
             if not threading_is_initialized:
                 initialize_threading()
-            queue = Queue()
-            self.workflow_queue[uid] = queue
+            communication_queue = Queue()
+            self.workflow_queue[uid] = communication_queue
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
             self.workflow_status[uid] = WORKFLOW_RUNNING
-            pool.apply_async(execute_workflow_worker, (workflow, subs, start, queue,))
+            pool.apply_async(execute_workflow_worker, (workflow, subs, start, communication_queue, workflow_results_queue))
             callbacks.SchedulerJobExecuted.send(self)
             # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
             return uid

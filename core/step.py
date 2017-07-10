@@ -81,6 +81,7 @@ class Step(ExecutionElement):
             self.templated = False
         self.output = None
         self.next_up = None
+        self.results_queue = None
 
     def reconstruct_ancestry(self, parent_ancestry):
         """Reconstructs the ancestry for a Step object. This is needed in case a workflow and/or playbook is renamed.
@@ -185,15 +186,18 @@ class Step(ExecutionElement):
             The result of the executed function.
         """
         callbacks.StepInputValidated.send(self)
+        self.results_queue.put(callbacks.StepInputValidated, None)
         try:
             args = dereference_step_routing(self.input, accumulator, 'In step {0}'.format(self.name))
             args = validate_app_action_parameters(self.input_api, args, self.app, self.action)
             action = get_app_action(self.app, self.run)
             result = action(instance, **args)
             callbacks.FunctionExecutionSuccess.send(self, data=json.dumps({"result": result}))
+            self.results_queue.put(callbacks.FunctionExecutionSuccess, json.dumps({"result": result}))
         except InvalidInput as e:
             logger.error('Error calling step {0}. Error: {1}'.format(self.name, str(e)))
             callbacks.StepInputInvalid.send(self)
+            self.results_queue.put(callbacks.StepInputInvalid, None)
             self.output = 'error: {0}'.format(str(e))
             raise
         except Exception as e:
@@ -224,6 +228,7 @@ class Step(ExecutionElement):
             if next_step:
                 self.next_up = next_step
                 callbacks.ConditionalsExecuted.send(self)
+                self.results_queue.put(callbacks.ConditionalsExecuted, None)
                 return next_step
 
     def to_xml(self, *args):

@@ -20,7 +20,6 @@ from tests.util.assertwrappers import orderless_list_compare
 from tests.util.case_db_help import executed_steps, setup_subscriptions_for_step
 from core.controller import _WorkflowKey
 from timeit import default_timer
-from server import flaskserver
 try:
     from importlib import reload
 except ImportError:
@@ -36,13 +35,13 @@ class TestWorkflowManipulation(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
-        initialize_threading()
 
     @classmethod
     def tearDownClass(cls):
         shutdown_pool()
 
     def setUp(self):
+        initialize_threading()
         case_database.initialize()
         self.controller = Controller(workflows_path=path.join(".", "tests", "testWorkflows", "testGeneratedWorkflows"))
         self.controller.load_workflows_from_file(
@@ -62,12 +61,9 @@ class TestWorkflowManipulation(unittest.TestCase):
         setup_subscriptions_for_step(self.testWorkflow.name, step_names)
         start = datetime.utcnow()
         # Check that the workflow executed correctly post-manipulation
-        # workflow = self.controller.get_workflow("simpleDataManipulationWorkflow", "helloWorldWorkflow")
-        # workflow.execute()
-        self.c.execute_workflow(*self.id_tuple)
+        self.controller.execute_workflow(*self.id_tuple)
 
-        with flaskserver.running_context.flask_app.app_context():
-            flaskserver.running_context.shutdown_threads()
+        shutdown_pool()
 
         steps = executed_steps('defaultController', self.testWorkflow.name, start, datetime.utcnow())
         self.assertEqual(len(steps), 2)
@@ -246,6 +242,7 @@ class TestWorkflowManipulation(unittest.TestCase):
     #     self.controller.load_workflows_from_file(path=path.join(config.test_workflows_path, 'pauseWorkflowTest.playbook'))
     #
     #     waiter = Event()
+    #     uid = None
     #
     #     def step_2_finished_listener(sender, **kwargs):
     #         if sender.name == '2':
@@ -254,7 +251,7 @@ class TestWorkflowManipulation(unittest.TestCase):
     #     def pause_resume_thread():
     #         self.controller.add_workflow_breakpoint_steps('pauseWorkflowTest', 'pauseWorkflow', ['2'])
     #         gevent.sleep(1.5)
-    #         self.controller.resume_breakpoint_step('pauseWorkflowTest', 'pauseWorkflow')
+    #         self.controller.resume_breakpoint_step('pauseWorkflowTest', 'pauseWorkflow', uid)
     #
     #     def step_1_about_to_begin_listener(sender, **kwargs):
     #         if sender.name == '1':
@@ -265,9 +262,7 @@ class TestWorkflowManipulation(unittest.TestCase):
     #     StepInputValidated.connect(step_1_about_to_begin_listener)
     #
     #     start = default_timer()
-    #     self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
-    #     # workflow = self.c.get_workflow("pauseWorkflowTest", "pauseWorkflow")
-    #     # workflow.execute()
+    #     uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
     #
     #     waiter.wait(timeout=5)
     #     duration = default_timer() - start

@@ -161,7 +161,6 @@ class Workflow(ExecutionElement):
         # if self.executor is not None:
         #     logger.info('Pausing workflow {0}'.format(self.ancestry))
             # self.is_paused = True
-
         logger.info('Pausing workflow {0}'.format(self.ancestry))
 
     def resume(self):
@@ -179,12 +178,13 @@ class Workflow(ExecutionElement):
     def resume_breakpoint_step(self):
         """Resumes a Workflow that has hit a breakpoint at a Step. This is used for debugging purposes.
         """
-        try:
-            logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
-            self.executor.send(None)
-        except (StopIteration, AttributeError) as e:
-            logger.warning('Cannot resume workflow {0} from breakpoint. Reason: {1}'.format(self.ancestry, e))
-            pass
+        # try:
+        #     logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
+        #     self.executor.send(None)
+        # except (StopIteration, AttributeError) as e:
+        #     logger.warning('Cannot resume workflow {0} from breakpoint. Reason: {1}'.format(self.ancestry, e))
+        #     pass
+        logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
 
     def execute(self, start=None, start_input='', queue=None):
         """Executes a Workflow by executing all Steps in the Workflow list of Step objects.
@@ -206,17 +206,18 @@ class Workflow(ExecutionElement):
         first = True
         for step in steps:
             logger.debug('Executing step {0} of workflow {1}'.format(step, self.ancestry))
-            print("workflow in execution")
             if queue and not queue.empty():
-                print("queue not empty, going to pause hopefully")
                 data = queue.get_nowait()
                 if data == 'pause':
+                    print("PAUSED!")
                     res = queue.get()
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:
                 if step.name in self.breakpoint_steps:
-                    _ = yield
+                    res = queue.get()
+                    if not res == 'resume':
+                        logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
                 callbacks.NextStepFound.send(self)
                 tuple = (step.app, step.device)
                 if tuple not in instances:

@@ -7,6 +7,7 @@ from tests.util.servertestcase import ServerTestCase
 class TestWorkflowResults(ServerTestCase):
     def setUp(self):
         server.workflowresults.results.clear()
+        flaskserver.running_context.init_threads()
 
     def test_workflow_result_recording(self):
         print(server.workflowresults.results)

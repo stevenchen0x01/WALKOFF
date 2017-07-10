@@ -1,6 +1,6 @@
 import os
 from collections import namedtuple
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool, Queue, Event
 from copy import deepcopy
 from os import sep
 from xml.etree import ElementTree
@@ -22,7 +22,7 @@ from core.helpers import (locate_workflows_in_directory, construct_workflow_name
 _WorkflowKey = namedtuple('WorkflowKey', ['playbook', 'workflow'])
 
 threading_is_initialized = False
-NUM_PROCESSES = 2
+NUM_PROCESSES = 1
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,6 @@ def execute_workflow_worker(workflow, subs, start, queue):
         "Done" when the workflow has finished execution.
     """
     subscription.set_subscriptions(subs)
-    print("worker got "+workflow.name+" and executing it")
     workflow.execute(start=start, queue=queue)
     return
 
@@ -377,18 +376,16 @@ class Controller(object):
             # If threading has not been initialized, initialize it.
             if not threading_is_initialized:
                 initialize_threading()
-            manager = Manager()
-            queue = manager.Queue()
+            queue = Queue()
+            self.workflow_queue[uid] = queue
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
-                pool.apply_async(execute_workflow_worker, (workflow, subs, start,queue,))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
-                pool.apply_async(execute_workflow_worker, (workflow, subs, start,queue,))
-            self.workflow_queue[uid] = queue
+            self.workflow_status[uid] = WORKFLOW_RUNNING
+            pool.apply_async(execute_workflow_worker, (workflow, subs, start, queue,))
             callbacks.SchedulerJobExecuted.send(self)
             # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
-            self.workflow_status[uid] = WORKFLOW_RUNNING
             return uid
         else:
             logger.error('Attempted to execute playbook which does not exist in controller')
@@ -481,7 +478,6 @@ class Controller(object):
             workflow_name (str): The name of the workflow.
             uid (str): The uid of the workflow
         """
-        print("pausing workflow")
         workflow = self.get_workflow(playbook_name, workflow_name)
         if workflow and uid in self.workflow_status and self.workflow_status[uid] == WORKFLOW_RUNNING:
             logger.info('Pausing workflow {0}'.format(workflow.name))
@@ -515,7 +511,7 @@ class Controller(object):
                 logger.warning('Cannot resume workflow {0}. Invalid key'.format(workflow.name))
                 return False
 
-    def resume_breakpoint_step(self, playbook_name, workflow_name):
+    def resume_breakpoint_step(self, playbook_name, workflow_name, uid):
         """Resumes a step that has been specified as a breakpoint.
         
         Args:
@@ -525,6 +521,8 @@ class Controller(object):
         workflow = self.get_workflow(playbook_name, workflow_name)
         if workflow:
             logger.debug('Resuming workflow {0} from breakpoint'.format(workflow.name))
+            if self.workflow_queue[uid]:
+                self.workflow_queue[uid].put('resume')
             workflow.resume_breakpoint_step()
 
     # Starts active execution

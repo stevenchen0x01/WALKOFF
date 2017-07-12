@@ -14,7 +14,7 @@ class Context(object):
         from server.database import User, Role, userRoles, db, user_datastore
         from server.triggers import Triggers
         from server.casesubscription import CaseSubscription
-        from core.controller import Controller
+        import core.controller
 
         self.User = User
         self.Role = Role
@@ -26,7 +26,9 @@ class Context(object):
         self.user_roles = userRoles
         self.db = db
         self.user_datastore = user_datastore
-        self.controller = Controller()
+        self.controller = core.controller.Controller()
+        self.wf_res_queue = core.controller.workflow_results_queue
+        self.wf_res_cond = core.controller.workflow_results_condition
 
     @staticmethod
     def get_apps(path=core.config.paths.apps_path):

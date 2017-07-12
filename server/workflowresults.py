@@ -8,17 +8,17 @@ max_results = 50
 results = OrderedDict()
 
 
-@WorkflowShutdown.connect
-def __workflow_ended_callback(sender, **kwargs):
+# @WorkflowShutdown.connect
+def workflow_ended_callback(uid):
     global results
-    if sender.uid in results:
-        results[sender.uid]['completed_at'] = str(datetime.utcnow())
-        results[sender.uid]['status'] = 'completed'
+    if uid in results:
+        results[uid]['completed_at'] = str(datetime.utcnow())
+        results[uid]['status'] = 'completed'
 
 
-@WorkflowExecutionStart.connect
-def __workflow_started_callback(sender, **kwargs):
-    results[sender.uid] = {'name': sender.name,
+# @WorkflowExecutionStart.connect
+def workflow_started_callback(uid, workflow_name):
+    results[uid] = {'name': workflow_name,
                            'started_at': str(datetime.utcnow()),
                            'status': 'running',
                            'results': []}
@@ -34,15 +34,17 @@ def __append_step_result(uid, data, step_type):
     results[uid]['results'].append(result)
 
 
-@StepExecutionSuccess.connect
-def __step_execution_success_callback(sender, **kwargs):
+# @StepExecutionSuccess.connect
+def step_execution_success_callback(uid, step_data):
     global results
-    if sender.uid in results:
-        __append_step_result(sender.uid, json.loads(kwargs['data'])['step'], 'SUCCESS')
+    if uid in results:
+        if not isinstance(step_data, str):
+            step_data = json.dumps(step_data)
+        __append_step_result(uid, step_data, 'SUCCESS')
 
 
-@StepExecutionError.connect
-def __step_execution_error_callback(sender, **kwargs):
+# @StepExecutionError.connect
+def step_execution_error_callback(uid, step_data):
     global results
-    if sender.uid in results:
-        __append_step_result(sender.uid, json.loads(kwargs['data'])['step'], 'ERROR')
+    if uid in results:
+        __append_step_result(uid, step_data, 'ERROR')

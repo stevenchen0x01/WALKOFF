@@ -20,21 +20,20 @@ __action_tmp = {}
 __workflow_tmp = {}
 
 
-@StepInputValidated.connect
-def __action_started_callback(sender, **kwargs):
+# @StepInputValidated.connect
+def action_started_callback(sender_app, sender_action):
     # TODO: This identifier should be replaced by step id when that happens
-    __action_tmp[(sender.app, sender.action)] = datetime.utcnow()
+    __action_tmp[(sender_app, sender_action)] = datetime.utcnow()
 
 
-@FunctionExecutionSuccess.connect
-def __action_ended_callback(sender, **kwargs):
-    __update_success_action_tracker(sender.app, sender.action)
+# @FunctionExecutionSuccess.connect
+def action_ended_callback(sender_app, sender_action):
+    __update_success_action_tracker(sender_app, sender_action)
 
 
-@StepExecutionError.connect
-def __action_ended_error_callback(sender, **kwargs):
-    step = json.loads(kwargs['data'])['step']
-    __update_error_action_tracker(step['app'], step['action'])
+# @StepExecutionError.connect
+def action_ended_error_callback(app, action):
+    __update_error_action_tracker(app, action)
 
 
 def __update_success_action_tracker(app, action):
@@ -62,19 +61,19 @@ def __update_action_tracker(form, app, action):
         del __action_tmp[(app, action)]
 
 
-@WorkflowExecutionStart.connect
-def __workflow_started_callback(sender, **kwargs):
+# @WorkflowExecutionStart.connect
+def workflow_started_callback(sender_name, **kwargs):
     # TODO: This identifier should be replaced by step id when that happens
-    __workflow_tmp[sender.name] = datetime.utcnow()
+    __workflow_tmp[sender_name] = datetime.utcnow()
 
 
-@WorkflowShutdown.connect
-def __workflow_ended_callback(sender, **kwargs):
-    if sender.name in __workflow_tmp:
-        execution_time = datetime.utcnow() - __workflow_tmp[sender.name]
-        if sender.name not in workflow_metrics:
-            workflow_metrics[sender.name] = {'count': 1, 'avg_time': execution_time}
+# @WorkflowShutdown.connect
+def workflow_ended_callback(workflow_name):
+    if workflow_name in __workflow_tmp:
+        execution_time = datetime.utcnow() - __workflow_tmp[workflow_name]
+        if workflow_name not in workflow_metrics:
+            workflow_metrics[workflow_name] = {'count': 1, 'avg_time': execution_time}
         else:
-            workflow_metrics[sender.name]['count'] += 1
-            workflow_metrics[sender.name]['avg_time'] = (workflow_metrics[sender.name]['avg_time'] + execution_time) / 2
-        del __workflow_tmp[sender.name]
+            workflow_metrics[workflow_name]['count'] += 1
+            workflow_metrics[workflow_name]['avg_time'] = (workflow_metrics[workflow_name]['avg_time'] + execution_time) / 2
+        del __workflow_tmp[workflow_name]

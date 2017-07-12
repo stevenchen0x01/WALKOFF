@@ -25,7 +25,7 @@ class TestStep(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=function_api_path)
-        gevent.monkey.patch_socket()
+        # gevent.monkey.patch_socket()
 
     def setUp(self):
         self.basic_json = {'app': 'HelloWorld',

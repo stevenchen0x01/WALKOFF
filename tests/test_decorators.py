@@ -43,7 +43,8 @@ class TestEventDecorator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        monkey.patch_socket()
+        # monkey.patch_socket()
+        pass
 
     @classmethod
     def tearDownClass(cls):

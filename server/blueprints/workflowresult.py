@@ -27,14 +27,14 @@ def __workflow_steps_event_stream():
         __step_signal.wait()
 
 
-@WorkflowShutdown.connect
-def __workflow_ended_callback(sender, **kwargs):
+# @WorkflowShutdown.connect
+def workflow_ended_callback(workflow_name, accumulator={}):
     data = 'None'
-    if 'data' in kwargs:
-        data = kwargs['data']
+    if accumulator:
+        data = accumulator
         if not isinstance(data, str):
             data = str(data)
-    result = {'name': sender.name,
+    result = {'name': workflow_name,
               'timestamp': str(datetime.utcnow()),
               'result': data}
     __workflow_shutdown_event_json.set(json.dumps(result))
@@ -76,31 +76,26 @@ def __step_error_callback(sender, **kwargs):
     sleep(0)
 
 
-@FunctionExecutionSuccess.connect
-def __step_ended_callback(sender, **kwargs):
-    data = 'None'
-    step_input = str(sender.input)
-    if 'data' in kwargs:
-        data = kwargs['data']
-        if not isinstance(data, str):
-            data = str(data)
-    result = {'name': sender.name,
+# @FunctionExecutionSuccess.connect
+def step_ended_callback(sender_input, sender_name, result_in='None'):
+    step_input = str(sender_input)
+    if not isinstance(result_in, str):
+        result_in = str(result_in)
+    result = {'name': sender_name,
               'type': "SUCCESS",
               'input': step_input,
-              'result': data}
+              'result': result_in}
     __workflow_step_event_json.set(json.dumps(result))
     __step_signal.set()
     __step_signal.clear()
     sleep(0)
 
 
-@StepExecutionError.connect
-def __step_error_callback(sender, **kwargs):
-    result = {'name': sender.name, 'type': 'ERROR'}
-    if 'data' in kwargs:
-        data = json.loads(kwargs['data'])
-        result['input'] = data['step']['input']
-        result['result'] = data['step']['result']
+# @StepExecutionError.connect
+def step_error_callback(sender_name, data_in):
+    result = {'name': sender_name, 'type': 'ERROR'}
+    result['input'] = data_in['input']
+    result['result'] = data_in['result']
     __workflow_step_event_json.set(json.dumps(result))
     __step_signal.set()
     __step_signal.clear()

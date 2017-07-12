@@ -9,6 +9,7 @@ import core.config.config
 import connexion
 from flask_security.utils import encrypt_password
 from core.helpers import format_db_path
+import threading
 
 
 logger = logging.getLogger(__name__)
@@ -192,3 +193,7 @@ def create_user():
     running_context.CaseSubscription.sync_to_subscriptions()
 
     app.logger.handlers = logging.getLogger('server').handlers
+
+    from .receiver import receive
+    t = threading.Thread(target=receive)
+    t.start()

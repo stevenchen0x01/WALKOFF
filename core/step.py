@@ -82,6 +82,7 @@ class Step(ExecutionElement):
         self.output = None
         self.next_up = None
         self.results_queue = None
+        self.results_cond = None
 
     def reconstruct_ancestry(self, parent_ancestry):
         """Reconstructs the ancestry for a Step object. This is needed in case a workflow and/or playbook is renamed.
@@ -175,6 +176,15 @@ class Step(ExecutionElement):
     def set_input(self, new_input):
         self.input = validate_app_action_parameters(self.input_api, new_input, self.app, self.action)
 
+    def send_callback(self, callback, callback_name, data):
+        if data:
+            callback.send(self, data)
+        if self.results_queue:
+            self.results_cond.acquire()
+            self.results_cond.put(callback_name, data)
+            self.results_cond.notify()
+            self.results_cond.release()
+
     def execute(self, instance, accumulator):
         """Executes a Step by calling the associated app function.
         
@@ -185,19 +195,19 @@ class Step(ExecutionElement):
         Returns:
             The result of the executed function.
         """
-        callbacks.StepInputValidated.send(self)
-        self.results_queue.put(callbacks.StepInputValidated, None)
+        self.send_callback(callbacks.StepInputValidated, 'Step Input Validated',
+                           {'app': self.app, 'action': self.action})
         try:
             args = dereference_step_routing(self.input, accumulator, 'In step {0}'.format(self.name))
             args = validate_app_action_parameters(self.input_api, args, self.app, self.action)
             action = get_app_action(self.app, self.run)
             result = action(instance, **args)
-            callbacks.FunctionExecutionSuccess.send(self, data=json.dumps({"result": result}))
-            self.results_queue.put(callbacks.FunctionExecutionSuccess, json.dumps({"result": result}))
+            self.send_callback(callbacks.FunctionExecutionSuccess, 'Function Execution Success',
+                               {'name': self.name, 'input': self.input, 'result': result,
+                                'app': self.app, 'action': self.action})
         except InvalidInput as e:
             logger.error('Error calling step {0}. Error: {1}'.format(self.name, str(e)))
             callbacks.StepInputInvalid.send(self)
-            self.results_queue.put(callbacks.StepInputInvalid, None)
             self.output = 'error: {0}'.format(str(e))
             raise
         except Exception as e:
@@ -228,7 +238,6 @@ class Step(ExecutionElement):
             if next_step:
                 self.next_up = next_step
                 callbacks.ConditionalsExecuted.send(self)
-                self.results_queue.put(callbacks.ConditionalsExecuted, None)
                 return next_step
 
     def to_xml(self, *args):

@@ -109,7 +109,7 @@ class TestExecutionRuntime(unittest.TestCase):
         from gevent import monkey, spawn
         from gevent.event import Event
         from core.case.callbacks import WorkflowShutdown
-        monkey.patch_all()
+        # monkey.patch_all()
 
         workflow_name = construct_workflow_name_key('loopWorkflow', 'loopWorkflow')
         step_names = ['start', '1']

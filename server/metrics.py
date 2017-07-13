@@ -31,7 +31,6 @@ def action_ended_callback(sender_app, sender_action):
     __update_success_action_tracker(sender_app, sender_action)
 
 
-# @StepExecutionError.connect
 def action_ended_error_callback(app, action):
     __update_error_action_tracker(app, action)
 

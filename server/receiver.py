@@ -33,8 +33,8 @@ def receive():
 
         elif name == 'Step Execution Error':
             server.workflowresults.step_execution_error_callback(data['uid'], data['step_data'])
-            server.blueprints.workflowresult.step_error_callback(data['name'], data['step_data']['step'])
-            server.metrics.action_ended_error_callback(data['step_data']['step']['app'], data['step_data']['step']['action'])
+            server.blueprints.workflowresult.step_error_callback(data['name'], data['step_data'])
+            server.metrics.action_ended_error_callback(data['step_data']['app'], data['step_data']['action'])
 
         elif name == 'Function Execution Success':
             server.blueprints.workflowresult.step_ended_callback(data['input'], data['name'], data['result'])

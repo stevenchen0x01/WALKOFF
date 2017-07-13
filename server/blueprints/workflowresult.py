@@ -91,7 +91,6 @@ def step_ended_callback(sender_input, sender_name, result_in='None'):
     sleep(0)
 
 
-# @StepExecutionError.connect
 def step_error_callback(sender_name, data_in):
     result = {'name': sender_name, 'type': 'ERROR'}
     result['input'] = data_in['input']

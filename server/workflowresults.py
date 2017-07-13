@@ -1,4 +1,3 @@
-from core.case.callbacks import WorkflowShutdown, WorkflowExecutionStart, StepExecutionError, StepExecutionSuccess
 from collections import OrderedDict
 from datetime import datetime
 import json
@@ -8,7 +7,6 @@ max_results = 50
 results = OrderedDict()
 
 
-# @WorkflowShutdown.connect
 def workflow_ended_callback(uid):
     global results
     if uid in results:
@@ -16,7 +14,6 @@ def workflow_ended_callback(uid):
         results[uid]['status'] = 'completed'
 
 
-# @WorkflowExecutionStart.connect
 def workflow_started_callback(uid, workflow_name):
     results[uid] = {'name': workflow_name,
                            'started_at': str(datetime.utcnow()),
@@ -34,7 +31,6 @@ def __append_step_result(uid, data, step_type):
     results[uid]['results'].append(result)
 
 
-# @StepExecutionSuccess.connect
 def step_execution_success_callback(uid, step_data):
     global results
     if uid in results:
@@ -43,7 +39,6 @@ def step_execution_success_callback(uid, step_data):
         __append_step_result(uid, step_data, 'SUCCESS')
 
 
-# @StepExecutionError.connect
 def step_execution_error_callback(uid, step_data):
     global results
     if uid in results:

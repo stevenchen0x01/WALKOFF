@@ -285,7 +285,6 @@ class Workflow(ExecutionElement):
             callbacks.WorkflowInputInvalid.send(self)
 
     def __execute_step(self, step, instance):
-<<<<<<< HEAD
         # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk
         data = { "step_data":
                     {"app": step.app,
@@ -305,22 +304,6 @@ class Workflow(ExecutionElement):
             self.send_callback(callbacks.StepExecutionError, 'Step Execution Error', data)
             if self.total_risk > 0:
                 self.accumulated_risk += float(step.risk) / self.total_risk
-=======
-        # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk
-        data = {"app": step.app,
-                "action": step.action,
-                "name": step.name,
-                "input": step.input}
-        try:
-            step.execute(instance=instance(), accumulator=self.accumulator)
-            data['result'] = step.output.as_json()
-            callbacks.StepExecutionSuccess.send(self, data=json.dumps(data))
-        except Exception as e:
-            data['result'] = step.output.as_json()
-            callbacks.StepExecutionError.send(self, data=json.dumps(data))
-            if self.total_risk > 0:
-                self.accumulated_risk += float(step.risk) / self.total_risk
->>>>>>> origin/development
             logger.debug('Step {0} of workflow {1} executed with error {2}'.format(step, self.ancestry, e))
 
     def __get_child_step_generator(self, tiered_step_str):

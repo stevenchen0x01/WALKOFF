@@ -13,6 +13,7 @@ from tests.util.case_db_help import executed_steps, setup_subscriptions_for_step
 from tests.util.assertwrappers import orderless_list_compare
 from core.controller import initialize_threading, shutdown_pool, Controller
 from tests.apps import App
+from server.receiver import start_receiver, stop_receiver
 
 
 class TestExecutionRuntime(unittest.TestCase):
@@ -31,11 +32,13 @@ class TestExecutionRuntime(unittest.TestCase):
             mkdir(profile_visualizations_path)
         self.start = datetime.utcnow()
         initialize_threading()
+        start_receiver()
         self.controller = Controller(workflows_path=config.test_workflows_path)
 
     def tearDown(self):
         database.case_db.tear_down()
         subscription.clear_subscriptions()
+        stop_receiver()
 
     """
         Tests the out templating function which replaces the value of an argument with the output
@@ -61,7 +64,7 @@ class TestExecutionRuntime(unittest.TestCase):
         for step in steps:
             name = step['ancestry'].split(',')[-1]
             self.assertIn(name, name_result)
-            result = json.loads(step['data'])
+            result = step['data']
             self.assertDictEqual(result['result'], name_result[name])
 
     """
@@ -92,7 +95,7 @@ class TestExecutionRuntime(unittest.TestCase):
             ancestry = step['ancestry'].split(',')
             name_id = (ancestry[-2], ancestry[-1])
             self.assertIn(name_id, name_result)
-            result = json.loads(step['data'])
+            result = step['data']
             if type(name_result[name_id]) == dict:
                 self.assertDictEqual(result['result'], name_result[name_id])
             else:

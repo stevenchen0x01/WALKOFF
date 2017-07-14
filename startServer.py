@@ -54,6 +54,8 @@ if __name__ == "__main__":
     case_database.initialize()
     ssl_context = get_ssl_context()
     flaskserver.running_context.init_threads()
+    from server.receiver import start_receiver
+    start_receiver()
     try:
         port = int(config.port)
     except ValueError:

@@ -218,7 +218,7 @@ class CaseDatabase(object):
                           timestamp=event.timestamp,
                           ancestry=','.join(map(str, event.ancestry)),
                           message=event.message,
-                          data=event.data)
+                          data=data)
         existing_cases = self.session.query(Case).all()
         existing_case_names = [case.name for case in existing_cases]
         for case in cases:

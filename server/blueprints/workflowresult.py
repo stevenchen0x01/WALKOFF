@@ -95,7 +95,7 @@ def step_error_callback(sender_name, data_in):
     result = {'name': sender_name, 'type': 'ERROR'}
     result['input'] = data_in['input']
     result['result'] = data_in['result']
-    __workflow_step_event_json.set(json.dumps(result))
+    __workflow_step_event_json.set(result)
     __step_signal.set()
     __step_signal.clear()
     sleep(0)

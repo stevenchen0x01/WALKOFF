@@ -34,8 +34,6 @@ def __append_step_result(uid, data, step_type):
 def step_execution_success_callback(uid, step_data):
     global results
     if uid in results:
-        if not isinstance(step_data, str):
-            step_data = json.dumps(step_data)
         __append_step_result(uid, step_data, 'SUCCESS')
 
 

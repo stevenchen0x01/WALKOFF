@@ -1,6 +1,6 @@
 import os
 from collections import namedtuple
-from multiprocessing import Pool, Queue, Condition
+import multiprocessing
 from copy import deepcopy
 from os import sep
 from xml.etree import ElementTree
@@ -25,7 +25,8 @@ threading_is_initialized = False
 pool = None
 workflow_results_queue = None
 workflow_results_condition = None
-NUM_PROCESSES = 1
+manager = None
+NUM_PROCESSES = 5
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,14 @@ def initialize_threading():
     global threading_is_initialized
     global workflow_results_queue
     global workflow_results_condition
+    global manager
 
-    workflow_results_queue = Queue()
-    workflow_results_condition = Condition()
+    manager = multiprocessing.Manager()
+    workflow_results_queue = multiprocessing.Queue()
+    workflow_results_condition = multiprocessing.Condition()
 
-    pool = Pool(processes=NUM_PROCESSES)
+    pool = multiprocessing.Pool(processes=NUM_PROCESSES, initializer=init_worker_globals, initargs=(workflow_results_queue,
+                                                                                    workflow_results_condition,))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -63,7 +67,21 @@ def shutdown_pool():
     logger.debug('Controller thread pool shutdown')
 
 
-def execute_workflow_worker(workflow, subs, start, communication_queue, wf_res_queue, wf_res_cond):
+def init_worker_globals(rq, rc):
+    global results_queue
+    global results_condition
+
+    results_queue = rq
+    results_condition = rc
+
+    from core.helpers import import_all_apps
+    import_all_apps()
+
+    from core.config.config import initialize
+    initialize()
+
+
+def execute_workflow_worker(workflow, subs, start, communication_queue):
     """Executes the workflow in a multi-threaded fashion.
     
     Args:
@@ -76,10 +94,12 @@ def execute_workflow_worker(workflow, subs, start, communication_queue, wf_res_q
     Returns:
         "Done" when the workflow has finished execution.
     """
+    import sys
+    print("Worker received "+workflow.name+ " and starting to execute")
     subscription.set_subscriptions(subs)
     workflow.communication_queue = communication_queue
-    workflow.results_queue = wf_res_queue
-    workflow.results_cond = wf_res_cond
+    workflow.results_queue = results_queue
+    workflow.results_cond = results_condition
     workflow.execute(start=start)
     return
 
@@ -376,9 +396,6 @@ class Controller(object):
             start_input (dict, optional): The input to the starting step of the workflow
         """
         global pool
-        global threading_is_initialized
-        global workflow_results_queue
-        global workflow_results_condition
 
         key = _WorkflowKey(playbook_name, workflow_name)
         if key in self.workflows:
@@ -390,15 +407,16 @@ class Controller(object):
             # If threading has not been initialized, initialize it.
             if not threading_is_initialized:
                 initialize_threading()
-            communication_queue = Queue()
+            communication_queue = manager.Queue()
             self.workflow_queue[uid] = communication_queue
+            print("Controller pushing workflow "+workflow.name+" onto queue")
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
             self.workflow_status[uid] = WORKFLOW_RUNNING
-            pool.apply_async(execute_workflow_worker, (workflow, subs, start, communication_queue,
-                                                       workflow_results_queue, workflow_results_condition,))
+            pool.apply_async(execute_workflow_worker, (workflow, subs, start,
+                                                 communication_queue,))
             callbacks.SchedulerJobExecuted.send(self)
             # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
             return uid

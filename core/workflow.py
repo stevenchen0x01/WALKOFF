@@ -188,11 +188,14 @@ class Workflow(ExecutionElement):
         logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
 
     def send_callback(self, callback, callback_name, data):
-        if data:
-            callback.send(self, data)
+        if 'data' in data:
+            callback.send(self, data=data['data'])
+        else:
+            callback.send(self)
         if self.results_queue:
+            print("pushing callback: "+callback_name+" onto queue")
             self.results_cond.acquire()
-            self.results_cond.put(callback_name, data)
+            self.results_queue.put((callback_name, data))
             self.results_cond.notify()
             self.results_cond.release()
 
@@ -217,8 +220,6 @@ class Workflow(ExecutionElement):
         first = True
         for step in steps:
             logger.debug('Executing step {0} of workflow {1}'.format(step, self.ancestry))
-            step.results_queue = self.results_queue
-            step.results_cond = self.results_cond
             if self.communication_queue and not self.communication_queue.empty():
                 data = self.communication_queue.get_nowait()
                 if data == 'pause':
@@ -227,6 +228,8 @@ class Workflow(ExecutionElement):
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:
+                step.results_queue = self.results_queue
+                step.results_cond = self.results_cond
                 if step.name in self.breakpoint_steps:
                     res = self.communication_queue.get()
                     if not res == 'resume':
@@ -286,7 +289,7 @@ class Workflow(ExecutionElement):
 
     def __execute_step(self, step, instance):
         # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk
-        data = { "step_data":
+        data = { "data":
                     {"app": step.app,
                      "action": step.action,
                      "name": step.name,
@@ -294,13 +297,13 @@ class Workflow(ExecutionElement):
         }
         try:
             step.execute(instance=instance(), accumulator=self.accumulator)
-            data['step_data']['result'] = step.output
             data['uid'] = self.uid
+            data['data']['result'] = step.output.as_json()
             self.send_callback(callbacks.StepExecutionSuccess, 'Step Execution Success', data)
         except Exception as e:
-            data['step_data']['result'] = step.output
             data['uid'] = self.uid
             data['name'] = self.name
+            data['data']['result'] = step.output.as_json()
             self.send_callback(callbacks.StepExecutionError, 'Step Execution Error', data)
             if self.total_risk > 0:
                 self.accumulated_risk += float(step.risk) / self.total_risk
@@ -340,8 +343,8 @@ class Workflow(ExecutionElement):
         data = {}
         data['uid'] = self.uid
         data['name'] = self.name
-        data['accumulator'] = dict(self.accumulator)
-        self.send_callback(callbacks.NextStepFound, 'Workflow Shutdown', data)
+        data['data'] = dict(self.accumulator)
+        self.send_callback(callbacks.WorkflowShutdown, 'Workflow Shutdown', data)
         logger.info('Workflow {0} completed. Result: {1}'.format(self.name, self.accumulator))
 
     def get_cytoscape_data(self):

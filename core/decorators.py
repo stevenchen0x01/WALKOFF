@@ -5,16 +5,19 @@ from collections import namedtuple
 from functools import wraps
 import json
 
-ActionResult = namedtuple('ActionResults', ['result', 'status'])
 
+class ActionResult(object):
+    def __init__(self, result, status):
+        self.result = result
+        self.status = status
 
-def action_result_as_json(self):
-    try:
-        json.dumps(self.result)
-        return {"result": self.result, "status": self.status}
-    except:
-        return {"result": str(self.result), "status": self.status}
-ActionResult.as_json = action_result_as_json
+    def as_json(self):
+        try:
+            json.dumps(self.result)
+            return {"result": self.result, "status": self.status}
+        except:
+            return {"result": str(self.result), "status": self.status}
+
 
 def format_result(result):
     if not isinstance(result, tuple):

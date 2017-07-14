@@ -61,7 +61,7 @@ def __update_action_tracker(form, app, action):
 
 
 # @WorkflowExecutionStart.connect
-def workflow_started_callback(sender_name, **kwargs):
+def workflow_started_callback(sender_name):
     # TODO: This identifier should be replaced by step id when that happens
     __workflow_tmp[sender_name] = datetime.utcnow()
 

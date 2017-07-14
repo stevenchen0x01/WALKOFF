@@ -169,11 +169,13 @@ class Step(ExecutionElement):
         self.input = validate_app_action_parameters(self.input_api, new_input, self.app, self.action)
 
     def send_callback(self, callback, callback_name, data):
-        if data:
-            callback.send(self, data)
+        if 'data' in data:
+            callback.send(self, data=data['data'])
+        else:
+            callback.send(self)
         if self.results_queue:
             self.results_cond.acquire()
-            self.results_cond.put(callback_name, data)
+            self.results_queue.put((callback_name, data))
             self.results_cond.notify()
             self.results_cond.release()
 
@@ -195,7 +197,7 @@ class Step(ExecutionElement):
             action = get_app_action(self.app, self.run)
             result = action(instance, **args)
             self.send_callback(callbacks.FunctionExecutionSuccess, 'Function Execution Success',
-                               {'name': self.name, 'input': self.input, 'result': result,
+                               {'name': self.name, 'input': self.input, 'data': {'result': result.as_json()},
                                 'app': self.app, 'action': self.action})
         except InvalidInput as e:
             formatted_error = format_exception_message(e)

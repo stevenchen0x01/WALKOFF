@@ -489,37 +489,34 @@ class TestStep(unittest.TestCase):
     def test_execute_no_args(self):
         step = Step(app='HelloWorld', action='helloWorld')
         instance = Instance.create(app_name='HelloWorld', device_name='device1')
-        self.assertTupleEqual(step.execute(instance.instance, {}), ({'message': 'HELLO WORLD'}, 'Success'))
-        self.assertTupleEqual(step.output, ({'message': 'HELLO WORLD'}, 'Success'))
+        self.assertEqual(step.execute(instance.instance, {}), ActionResult({'message': 'HELLO WORLD'}, 'Success'))
+        self.assertEqual(step.output, ActionResult({'message': 'HELLO WORLD'}, 'Success'))
 
     def test_execute_with_args(self):
         step = Step(app='HelloWorld', action='Add Three', inputs={'num1': '-5.6', 'num2': '4.3', 'num3': '10.2'})
         instance = Instance.create(app_name='HelloWorld', device_name='device1')
         result = step.execute(instance.instance, {})
-        self.assertIsInstance(result, tuple)
         self.assertAlmostEqual(result.result, 8.9)
         self.assertEqual(result.status, 'Success')
-        self.assertTupleEqual(step.output, result)
+        self.assertEqual(step.output, result)
 
     def test_execute_with_accumulator_with_conversion(self):
         step = Step(app='HelloWorld', action='Add Three', inputs={'num1': '@1', 'num2': '@step2', 'num3': '10.2'})
         accumulator = {'1': '-5.6', 'step2': '4.3'}
         instance = Instance.create(app_name='HelloWorld', device_name='device1')
         result = step.execute(instance.instance, accumulator)
-        self.assertIsInstance(result, tuple)
         self.assertAlmostEqual(result.result, 8.9)
         self.assertEqual(result.status, 'Success')
-        self.assertTupleEqual(step.output, result)
+        self.assertEqual(step.output, result)
 
     def test_execute_with_accumulator_with_extra_steps(self):
         step = Step(app='HelloWorld', action='Add Three', inputs={'num1': '@1', 'num2': '@step2', 'num3': '10.2'})
         accumulator = {'1': '-5.6', 'step2': '4.3', '3': '45'}
         instance = Instance.create(app_name='HelloWorld', device_name='device1')
         result = step.execute(instance.instance, accumulator)
-        self.assertIsInstance(result, tuple)
         self.assertAlmostEqual(result.result, 8.9)
         self.assertEqual(result.status, 'Success')
-        self.assertTupleEqual(step.output, result)
+        self.assertEqual(step.output, result)
 
     def test_execute_with_accumulator_missing_step(self):
         step = Step(app='HelloWorld', action='Add Three', inputs={'num1': '@1', 'num2': '@step2', 'num3': '10.2'})
@@ -534,10 +531,9 @@ class TestStep(unittest.TestCase):
                                         'd': [{'a': '', 'b': 3}, {'a': '', 'b': -1.5}, {'a': '', 'b': -0.5}]}})
         instance = Instance.create(app_name='HelloWorld', device_name='device1')
         result = step.execute(instance.instance, {})
-        self.assertIsInstance(result, tuple)
         self.assertAlmostEqual(result.result, 11.0)
         self.assertEqual(result.status, 'Success')
-        self.assertTupleEqual(step.output, result)
+        self.assertEqual(step.output, result)
 
     def test_execute_action_which_raises_exception(self):
         from tests.apps.HelloWorld.exceptions import CustomException
@@ -561,7 +557,7 @@ class TestStep(unittest.TestCase):
         gevent.spawn(sender)
         result = step.execute(instance.instance, {})
         end = time.time()
-        self.assertTupleEqual(result, (4, 'Success'))
+        self.assertEqual(result, ActionResult(4, 'Success'))
         self.assertTrue((end-start) > 0.1)
 
     def test_get_next_step_no_next_steps(self):

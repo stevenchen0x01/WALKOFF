@@ -6,6 +6,7 @@ import core.controller
 
 
 t = None
+running = False
 
 
 def receive():
@@ -13,7 +14,7 @@ def receive():
     while True:
 
         core.controller.workflow_results_condition.acquire()
-        while core.controller.workflow_results_queue.empty():
+        if core.controller.workflow_results_queue.empty():
             print("queue is empty, receiver waiting on condition")
             core.controller.workflow_results_condition.wait()
         name, data = core.controller.workflow_results_queue.get()
@@ -61,17 +62,23 @@ def receive():
 
 def start_receiver():
     global t
+    global running
 
-    t = threading.Thread(target=receive)
-    t.start()
+    if not running:
+        running = True
+        t = threading.Thread(target=receive)
+        t.start()
 
 
 def stop_receiver():
     global t
+    global running
 
-    core.controller.workflow_results_condition.acquire()
-    core.controller.workflow_results_queue.put((None, None))
-    core.controller.workflow_results_condition.notify()
-    core.controller.workflow_results_condition.release()
+    if running:
+        running = False
+        core.controller.workflow_results_condition.acquire()
+        core.controller.workflow_results_queue.put((None, None))
+        core.controller.workflow_results_condition.notify()
+        core.controller.workflow_results_condition.release()
 
-    t.join(5)
+        t.join()

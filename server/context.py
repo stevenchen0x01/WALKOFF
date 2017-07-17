@@ -72,7 +72,9 @@ class Context(object):
         """Initializes the thread pool.
         """
         from core.controller import initialize_threading
+        from server.receiver import start_receiver
         initialize_threading()
+        start_receiver()
 
     @staticmethod
     def shutdown_threads():

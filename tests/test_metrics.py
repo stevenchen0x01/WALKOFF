@@ -4,12 +4,17 @@ from tests import config
 from tests.util.assertwrappers import orderless_list_compare
 import server.metrics as metrics
 from core.helpers import construct_workflow_name_key
+from server.receiver import start_receiver, stop_receiver
 
 class MetricsTest(ServerTestCase):
     def setUp(self):
         metrics.app_metrics = {}
         metrics.workflow_metrics = {}
         server.running_context.init_threads()
+        start_receiver()
+
+    def tearDown(self):
+        stop_receiver()
 
     def test_action_metrics(self):
         server.running_context.controller.load_workflows_from_file(path=config.test_workflows_path +

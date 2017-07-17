@@ -8,6 +8,8 @@ from core.helpers import import_all_apps, import_all_filters, import_all_flags
 from tests.apps import App
 from tests import config
 import core.config.config
+from server.receiver import start_receiver, stop_receiver
+from core import controller
 
 from core.case.callbacks import FunctionExecutionSuccess
 
@@ -22,6 +24,8 @@ class TestTriggers(ServerTestCase):
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
         self.test_trigger_name = "testTrigger"
         self.test_trigger_workflow = "helloWorldWorkflow"
+        controller.initialize_threading()
+        start_receiver()
 
     def tearDown(self):
         with server.running_context.flask_app.app_context():
@@ -34,6 +38,8 @@ class TestTriggers(ServerTestCase):
             Triggers.query.filter_by(name="{0}rename".format(self.test_trigger_name)).delete()
             server.database.db.session.commit()
             server.running_context.controller.workflows = {}
+            stop_receiver()
+            controller.shutdown_pool()
 
     def test_add_and_display_and_remove_trigger(self):
         condition = {"flag": 'regMatch', "args": [{'name': 'regex', 'value': '(.*)'}], "filters": []}
@@ -189,7 +195,7 @@ class TestTriggers(ServerTestCase):
         self.assertEqual(response['executed'][0]['name'], 'testTrigger')
         self.assertListEqual(response['errors'], [])
         step_input = {'result': 'REPEATING: CHANGE INPUT'}
-        self.assertDictEqual(json.loads(result['value']),
+        self.assertDictEqual(result['value'],
                              {'result': {'result': 'REPEATING: CHANGE INPUT', 'status': 'Success'}})
 
     def test_trigger_with_change_input_invalid_input(self):

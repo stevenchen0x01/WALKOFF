@@ -3,11 +3,14 @@ from server import flaskserver
 import server.workflowresults
 from tests import config
 from tests.util.servertestcase import ServerTestCase
+from server.receiver import start_receiver, stop_receiver
 
 class TestWorkflowResults(ServerTestCase):
     def setUp(self):
         server.workflowresults.results.clear()
         flaskserver.running_context.init_threads()
+        start_receiver()
+
 
     def test_workflow_result_recording(self):
         flaskserver.running_context.controller.load_workflows_from_file(path=config.test_workflows_path +
@@ -16,6 +19,7 @@ class TestWorkflowResults(ServerTestCase):
         flaskserver.running_context.controller.execute_workflow('multiactionWorkflowTest', 'multiactionWorkflow')
         with flaskserver.running_context.flask_app.app_context():
             flaskserver.running_context.shutdown_threads()
+        stop_receiver()
         self.assertEqual(len(server.workflowresults.results), 1)
         key = list(server.workflowresults.results.keys())[0]
         self.assertIn('status', server.workflowresults.results[key])

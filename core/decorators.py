@@ -18,6 +18,9 @@ class ActionResult(object):
         except:
             return {"result": str(self.result), "status": self.status}
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
 
 def format_result(result):
     if not isinstance(result, tuple):

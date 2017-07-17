@@ -32,14 +32,14 @@ class TestDecorators(unittest.TestCase):
         def add_three(a, b, c):
             return a + b + c
 
-        self.assertTupleEqual(add_three(1, 2, 3), ActionResult(6, 'Success'))
+        self.assertEqual(add_three(1, 2, 3), ActionResult(6, 'Success'))
 
     def test_action_wraps_execution_return_specified(self):
         @action
         def add_three(a, b, c):
             return a + b + c, 'Custom'
 
-        self.assertTupleEqual(add_three(1, 2, 3), ActionResult(6, 'Custom'))
+        self.assertEqual(add_three(1, 2, 3), ActionResult(6, 'Custom'))
 
     def test_flag_decorator_is_tagged(self):
 
@@ -117,9 +117,9 @@ class TestEventDecorator(unittest.TestCase):
         spawn(sender)
         result = b.ev()
         duration = default_timer() - start
-        self.assertTupleEqual(result, (test_data, 'Success'))
+        self.assertEqual(result, ActionResult(test_data, 'Success'))
         self.assertSetEqual(event1.receivers, set())
-        self.assertTrue(duration > 0.1)
+        self.assertTrue(duration > 0.01)
 
     def test_event_execution_with_timeout(self):
         event1 = Event('Event1')
@@ -138,5 +138,5 @@ class TestEventDecorator(unittest.TestCase):
 
         spawn(sender)
         result = b.ev()
-        self.assertEqual(result, ('Getting event Event1 timed out at 0 seconds', 'EventTimedOut'))
+        self.assertEqual(result, ActionResult('Getting event Event1 timed out at 0 seconds', 'EventTimedOut'))
         self.assertSetEqual(event1.receivers, set())

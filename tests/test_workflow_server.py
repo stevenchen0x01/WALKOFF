@@ -13,10 +13,12 @@ from gevent.event import Event
 from core.case.callbacks import WorkflowShutdown
 from server.return_codes import *
 import server.workflowresults
+from server.receiver import start_receiver, stop_receiver
 
 
 class TestWorkflowServer(ServerTestCase):
     def setUp(self):
+        # flask_server.running_context.init_threads()
         # This looks awful, I know
         self.empty_workflow_json = \
             {'workflow': {'steps': [],
@@ -65,6 +67,8 @@ class TestWorkflowServer(ServerTestCase):
                              'month': '11-12'}, 'type': 'cron', 'autorun': 'false'}}}}
 
     def tearDown(self):
+        stop_receiver()
+        flask_server.running_context.shutdown_threads()
         flask_server.running_context.controller.workflows = {}
 
     def test_display_all_playbooks(self):
@@ -790,6 +794,7 @@ class TestWorkflowServer(ServerTestCase):
                                     headers=self.headers, status_code=OBJECT_DNE_ERROR)
 
     def test_execute_workflow(self):
+        flask_server.running_context.init_threads()
         sync = Event()
         workflow_name = helpers.construct_workflow_name_key('test', 'helloWorldWorkflow')
         setup_subscriptions_for_step(workflow_name, ['start'])
@@ -810,11 +815,12 @@ class TestWorkflowServer(ServerTestCase):
         step = steps[0]
         ancestry = step['ancestry'].split(',')
         self.assertEqual(ancestry[-1], "start")
-        result = json.loads(step['data'])
+        result = step['data']
         self.assertEqual(result['result'], {'status': 'Success', 'result': 'REPEATING: Hello World'})
 
     # TODO: FIX THIS TEST
     def test_execute_workflow_in_memory(self):
+        flask_server.running_context.init_threads()
         sync = Event()
         workflow_name = 'test_name'
         data = {"playbook": 'basicWorkflow',
@@ -841,10 +847,11 @@ class TestWorkflowServer(ServerTestCase):
         step = steps[0]
         ancestry = step['ancestry'].split(',')
         self.assertEqual(ancestry[-1], "start")
-        result = json.loads(step['data'])
+        result = step['data']
         self.assertDictEqual(result['result'], {'status': 'Success', 'result': 'REPEATING: Hello World'})
 
     def test_read_results(self):
+        flask_server.running_context.init_threads()
         server.workflowresults.results.clear()
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
@@ -861,6 +868,7 @@ class TestWorkflowServer(ServerTestCase):
             self.assertIn('name', result)
 
     def test_read_all_results(self):
+        flask_server.running_context.init_threads()
         server.workflowresults.results.clear()
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)

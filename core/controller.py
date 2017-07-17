@@ -1,6 +1,7 @@
 import os
 from collections import namedtuple
 import multiprocessing
+import gc
 from copy import deepcopy
 from os import sep
 from xml.etree import ElementTree
@@ -62,8 +63,8 @@ def shutdown_pool():
 
     if threading_is_initialized:
         pool.close()
-
         pool.join()
+        gc.collect()
         threading_is_initialized = False
 
     logger.debug('Controller thread pool shutdown')

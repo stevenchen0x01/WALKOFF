@@ -16,7 +16,7 @@ def receive():
         core.controller.workflow_results_condition.acquire()
         if core.controller.workflow_results_queue.empty():
             print("queue is empty, receiver waiting on condition")
-            core.controller.workflow_results_condition.wait()
+            core.controller.workflow_results_condition.wait(timeout=1)
         name, data = core.controller.workflow_results_queue.get()
         core.controller.workflow_results_condition.release()
 
@@ -24,7 +24,6 @@ def receive():
             break
 
         if name == 'Workflow Shutdown':
-            print("Receiver got Workflow Shutdown message")
             server.workflowresults.workflow_ended_callback(data['uid'])
             if 'data' in data:
                 server.blueprints.workflowresult.workflow_ended_callback(data['name'], data['data'])
@@ -33,27 +32,22 @@ def receive():
             server.metrics.workflow_ended_callback(data['name'])
 
         elif name == 'Workflow Execution Start':
-            print("Receiver got Workflow execution Start message")
             server.workflowresults.workflow_started_callback(data['uid'], data['name'])
             server.metrics.workflow_started_callback(data['name'])
 
         elif name == 'Step Execution Success':
-            print("Receiver got Step Execution Success message")
             server.workflowresults.step_execution_success_callback(data['uid'], data['data'])
 
         elif name == 'Step Execution Error':
-            print("Receiver got Step Execution Error message")
             server.workflowresults.step_execution_error_callback(data['uid'], data['data'])
             server.blueprints.workflowresult.step_error_callback(data['name'], data['data'])
             server.metrics.action_ended_error_callback(data['data']['app'], data['data']['action'])
 
         elif name == 'Function Execution Success':
-            print("Receiver got Function Execution Success message")
             server.blueprints.workflowresult.step_ended_callback(data['input'], data['name'], data['data']['result'])
             server.metrics.action_ended_callback(data['app'], data['action'])
 
         elif name == 'Step Input Validated':
-            print("Receiver got Step Input Validated message")
             server.metrics.action_started_callback(data['app'], data['action'])
 
     print("receiver returning")

@@ -8,7 +8,8 @@ from tests import config
 from tests.util.assertwrappers import orderless_list_compare
 from tests.util.case_db_help import *
 from tests.apps import App
-import json
+from server.receiver import start_receiver, stop_receiver
+
 
 class TestSimpleWorkflow(unittest.TestCase):
     @classmethod
@@ -25,10 +26,12 @@ class TestSimpleWorkflow(unittest.TestCase):
         self.controller = Controller(workflows_path=config.test_workflows_path)
         self.start = datetime.utcnow()
         initialize_threading()
+        start_receiver()
 
     def tearDown(self):
         database.case_db.tear_down()
         subscription.clear_subscriptions()
+        stop_receiver()
 
     def test_simple_workflow_execution(self):
         workflow_name = construct_workflow_name_key('basicWorkflowTest', 'helloWorldWorkflow')

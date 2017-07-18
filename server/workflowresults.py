@@ -1,3 +1,5 @@
+from core.case.callbacks import WorkflowShutdown, WorkflowExecutionStart, StepExecutionError, StepExecutionSuccess
+import core.case.database as case_database
 from collections import OrderedDict
 from datetime import datetime
 import json
@@ -6,8 +8,8 @@ max_results = 50
 
 results = OrderedDict()
 
-
-def workflow_ended_callback(uid):
+@WorkflowShutdown.connect
+def __workflow_ended_callback(uid):
     global results
     if uid in results:
         results[uid]['completed_at'] = str(datetime.utcnow())

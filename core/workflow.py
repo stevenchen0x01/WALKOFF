@@ -187,15 +187,15 @@ class Workflow(ExecutionElement):
         #     pass
         logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
 
-    def send_callback(self, callback, callback_name, data):
-        if 'data' in data:
-            callback.send(self, data=data['data'])
-        else:
-            callback.send(self)
+    def send_callback(self, callback, callback_name, data={}):
+        # if 'data' in data:
+        #     callback.send(self, data=data['data'])
+        # else:
+        #     callback.send(self)
         if self.results_queue:
             print("pushing callback: "+callback_name+" onto queue")
             self.results_cond.acquire()
-            self.results_queue.put((callback_name, data))
+            self.results_queue.put((callback, data))
             self.results_cond.notify_all()
             self.results_cond.release()
 
@@ -234,11 +234,13 @@ class Workflow(ExecutionElement):
                     res = self.communication_queue.get()
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
-                callbacks.NextStepFound.send(self)
+                # callbacks.NextStepFound.send(self)
+                self.send_callback(callbacks.NextStepFound, 'Next Step Found')
                 device_id = (step.app, step.device)
                 if device_id not in instances:
                     instances[device_id] = Instance.create(step.app, step.device)
-                    callbacks.AppInstanceCreated.send(self)
+                    # callbacks.AppInstanceCreated.send(self)
+                    self.send_callback(callbacks.AppInstanceCreated, 'App Instance Created')
                     logger.debug('Created new app instance: App {0}, device {1}'.format(step.app, step.device))
                 step.render_step(steps=total_steps)
 
@@ -281,11 +283,13 @@ class Workflow(ExecutionElement):
         logger.debug('Swapping input to first step of workflow {0}'.format(self.ancestry))
         try:
             step.set_input(start_input)
-            callbacks.WorkflowInputValidated.send(self)
+            # callbacks.WorkflowInputValidated.send(self)
+            self.send_callback(callbacks.WorkflowInputValidated, 'Workflow Input Validated')
         except InvalidInput as e:
             logger.error('Cannot change input to workflow {0}. '
                          'Invalid input. Error: {1}'.format(self.name, str(e)))
-            callbacks.WorkflowInputInvalid.send(self)
+            # callbacks.WorkflowInputInvalid.send(self)
+            self.send_callback(callbacks.WorkflowInputInvalid, 'Workflow Input Invalid')
 
     def __execute_step(self, step, instance):
         # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk

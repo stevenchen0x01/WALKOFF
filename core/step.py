@@ -168,14 +168,15 @@ class Step(ExecutionElement):
     def set_input(self, new_input):
         self.input = validate_app_action_parameters(self.input_api, new_input, self.app, self.action)
 
-    def send_callback(self, callback, callback_name, data):
-        if 'data' in data:
-            callback.send(self, data=data['data'])
-        else:
-            callback.send(self)
+    def send_callback(self, callback, callback_name, data={}):
+        # if 'data' in data:
+        #     callback.send(self, data=data['data'])
+        # else:
+        #     callback.send(self)
         if self.results_queue:
+            print("pushing callback: " + callback_name + " onto queue")
             self.results_cond.acquire()
-            self.results_queue.put((callback_name, data))
+            self.results_queue.put((callback, data))
             self.results_cond.notify_all()
             self.results_cond.release()
 
@@ -202,7 +203,8 @@ class Step(ExecutionElement):
         except InvalidInput as e:
             formatted_error = format_exception_message(e)
             logger.error('Error calling step {0}. Error: {1}'.format(self.name, formatted_error))
-            callbacks.StepInputInvalid.send(self)
+            # callbacks.StepInputInvalid.send(self)
+            self.send_callback(callbacks.StepInputInvalid, 'Step Input Invalid')
             self.output = ActionResult('error: {0}'.format(formatted_error), 'InvalidInput')
             raise
         except Exception as e:
@@ -230,7 +232,8 @@ class Step(ExecutionElement):
             next_step = next_step(self.output, accumulator)
             if next_step is not None:
                 self.next_up = next_step
-                callbacks.ConditionalsExecuted.send(self)
+                # callbacks.ConditionalsExecuted.send(self)
+                self.send_callback(callbacks.ConditionalsExecuted, 'Conditionals Executed')
                 return next_step
 
     def to_xml(self, *args):

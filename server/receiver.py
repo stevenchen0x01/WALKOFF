@@ -14,14 +14,19 @@ def receive():
     while True:
 
         core.controller.workflow_results_condition.acquire()
-        if core.controller.workflow_results_queue.empty():
+        while core.controller.workflow_results_queue.empty():
             print("queue is empty, receiver waiting on condition")
             core.controller.workflow_results_condition.wait(timeout=1)
-        name, data = core.controller.workflow_results_queue.get()
+        callback, data = core.controller.workflow_results_queue.get()
         core.controller.workflow_results_condition.release()
 
-        if name is None:
+        if callback is None:
             break
+
+        if 'data' in data:
+            callback.send()
+        else:
+            callback.send(data=data['data'])
 
         if name == 'Workflow Shutdown':
             server.workflowresults.workflow_ended_callback(data['uid'])

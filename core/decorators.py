@@ -22,11 +22,13 @@ class ActionResult(object):
         return self.__dict__ == other.__dict__
 
 
+
 def format_result(result):
     if not isinstance(result, tuple):
         return ActionResult(result, 'Success')
     else:
         return ActionResult(*result)
+
 
 def tag(func, tag_name):
     setattr(func, tag_name, True)

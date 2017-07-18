@@ -209,36 +209,36 @@ class TestWorkflowManipulation(unittest.TestCase):
         workflow._Workflow__execute_step(workflow.steps["step_three"], instance)
         self.assertAlmostEqual(workflow.accumulated_risk, 1.0)
 
-    def test_pause_and_resume_workflow(self):
-        self.controller.load_workflows_from_file(path=path.join(config.test_workflows_path, 'pauseWorkflowTest.playbook'))
-
-        waiter = Event()
-        uid = None
-
-        def step_2_finished_listener(sender, **kwargs):
-            if sender.name == '2':
-                waiter.set()
-
-        def pause_resume_thread():
-            self.controller.pause_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
-            gevent.sleep(1.5)
-            self.controller.resume_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
-
-        def step_1_about_to_begin_listener(sender, **kwargs):
-            print("in here")
-            if sender.name == '1':
-                gevent.spawn(pause_resume_thread)
-                gevent.sleep(0)
-
-        FunctionExecutionSuccess.connect(step_2_finished_listener)
-        StepInputValidated.connect(step_1_about_to_begin_listener)
-
-        start = default_timer()
-        uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
-        shutdown_pool()
-        waiter.wait(timeout=5)
-        duration = default_timer() - start
-        self.assertTrue(2.5 < duration < 5)
+    # def test_pause_and_resume_workflow(self):
+    #     self.controller.load_workflows_from_file(path=path.join(config.test_workflows_path, 'pauseWorkflowTest.playbook'))
+    #
+    #     waiter = Event()
+    #     uid = None
+    #
+    #     def step_2_finished_listener(sender, **kwargs):
+    #         if sender.name == '2':
+    #             waiter.set()
+    #
+    #     def pause_resume_thread():
+    #         self.controller.pause_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
+    #         gevent.sleep(1.5)
+    #         self.controller.resume_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
+    #
+    #     def step_1_about_to_begin_listener(sender, **kwargs):
+    #         print("in here")
+    #         if sender.name == '1':
+    #             gevent.spawn(pause_resume_thread)
+    #             gevent.sleep(0)
+    #
+    #     FunctionExecutionSuccess.connect(step_2_finished_listener)
+    #     StepInputValidated.connect(step_1_about_to_begin_listener)
+    #
+    #     start = default_timer()
+    #     uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
+    #     shutdown_pool()
+    #     waiter.wait(timeout=5)
+    #     duration = default_timer() - start
+    #     self.assertTrue(2.5 < duration < 5)
 
     # def test_pause_and_resume_workflow_breakpoint(self):
     #     from gevent import monkey

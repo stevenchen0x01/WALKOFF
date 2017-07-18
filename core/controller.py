@@ -27,7 +27,7 @@ pool = None
 workflow_results_queue = None
 workflow_results_condition = None
 manager = None
-NUM_PROCESSES = 5
+NUM_PROCESSES = 2
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +60,17 @@ def shutdown_pool():
     """
     global pool
     global threading_is_initialized
+    global workflow_results_condition
 
     if threading_is_initialized:
+        workflow_results_condition.acquire()
+        workflow_results_condition.notify_all()
+        workflow_results_condition.release()
+
         pool.close()
         pool.join()
         gc.collect()
+        print("***POOL SHUTDOWN***")
         threading_is_initialized = False
 
     logger.debug('Controller thread pool shutdown')

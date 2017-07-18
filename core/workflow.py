@@ -196,7 +196,7 @@ class Workflow(ExecutionElement):
             print("pushing callback: "+callback_name+" onto queue")
             self.results_cond.acquire()
             self.results_queue.put((callback_name, data))
-            self.results_cond.notify()
+            self.results_cond.notify_all()
             self.results_cond.release()
 
     def execute(self, start=None, start_input=''):

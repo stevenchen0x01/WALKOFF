@@ -176,7 +176,7 @@ class Step(ExecutionElement):
         if self.results_queue:
             self.results_cond.acquire()
             self.results_queue.put((callback_name, data))
-            self.results_cond.notify()
+            self.results_cond.notify_all()
             self.results_cond.release()
 
     def execute(self, instance, accumulator):

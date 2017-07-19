@@ -38,10 +38,6 @@ class TestWorkflowManipulation(unittest.TestCase):
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
 
-    @classmethod
-    def tearDownClass(cls):
-        shutdown_pool()
-
     def setUp(self):
         initialize_threading()
         case_database.initialize()
@@ -59,6 +55,7 @@ class TestWorkflowManipulation(unittest.TestCase):
         case_subscription.clear_subscriptions()
         reload(socket)
         stop_receiver()
+        shutdown_pool()
 
     def __execution_test(self):
         step_names = ['start', '1']
@@ -240,7 +237,7 @@ class TestWorkflowManipulation(unittest.TestCase):
         shutdown_pool()
         waiter.wait(timeout=5)
         duration = default_timer() - start
-        self.assertTrue(2.5 < duration < 5)
+        self.assertTrue(2.5 < duration < 6)
 
     def test_pause_and_resume_workflow_breakpoint(self):
         self.controller.load_workflows_from_file(path=path.join(config.test_workflows_path, 'pauseWorkflowTest.playbook'))
@@ -271,7 +268,7 @@ class TestWorkflowManipulation(unittest.TestCase):
 
         waiter.wait(timeout=5)
         duration = default_timer() - start
-        self.assertTrue(2.5 < duration < 5)
+        self.assertTrue(2.5 < duration < 6)
 
     def test_change_step_input(self):
         input_list = [{'key': 'call', 'value': 'CHANGE INPUT'}]

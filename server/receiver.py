@@ -27,7 +27,7 @@ def receive():
         if callback is None:
             break
 
-        print("Receiver popped "+callback+" off queue.")
+        print("Receiver popped "+callback+" off queue")
 
         if callback == "Workflow Execution Start":
             send_callback(callbacks.WorkflowExecutionStart, sender, data)

@@ -39,6 +39,7 @@ class TestSimpleWorkflow(unittest.TestCase):
         self.controller.execute_workflow('basicWorkflowTest', 'helloWorldWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
 

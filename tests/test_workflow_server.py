@@ -856,7 +856,6 @@ class TestWorkflowServer(ServerTestCase):
 
     def test_read_results(self):
         flask_server.running_context.init_threads()
-        server.workflowresults.results.clear()
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
@@ -873,7 +872,6 @@ class TestWorkflowServer(ServerTestCase):
 
     def test_read_all_results(self):
         flask_server.running_context.init_threads()
-        server.workflowresults.results.clear()
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)
         self.app.post('/playbooks/test/workflows/helloWorldWorkflow/execute', headers=self.headers)

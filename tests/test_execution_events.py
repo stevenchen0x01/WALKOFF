@@ -7,6 +7,7 @@ from core.helpers import construct_workflow_name_key, import_all_flags, import_a
 from tests import config
 import core.config.config
 from tests.apps import App
+from server.receiver import start_receiver, stop_receiver
 
 
 class TestExecutionEvents(unittest.TestCase):
@@ -25,9 +26,11 @@ class TestExecutionEvents(unittest.TestCase):
     def setUp(self):
         case_database.initialize()
         initialize_threading()
+        start_receiver()
         pass
 
     def tearDown(self):
+        stop_receiver()
         case_database.tear_down()
 
     def test_workflowExecutionEvents(self):
@@ -47,6 +50,7 @@ class TestExecutionEvents(unittest.TestCase):
         c.execute_workflow('multiactionWorkflowTest', 'multiactionWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         execution_events_case = case_database.case_db.session.query(case_database.Case) \
             .filter(case_database.Case.name == 'testExecutionEvents').first()
@@ -79,6 +83,7 @@ class TestExecutionEvents(unittest.TestCase):
         c.execute_workflow('basicWorkflowTest', 'helloWorldWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         step_execution_events_case = case_database.case_db.session.query(case_database.Case) \
             .filter(case_database.Case.name == 'testStepExecutionEvents').first()
@@ -109,6 +114,7 @@ class TestExecutionEvents(unittest.TestCase):
         c.execute_workflow('basicWorkflowTest', 'helloWorldWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         step_ffk_events_case = case_database.case_db.session.query(case_database.Case) \
             .filter(case_database.Case.name == 'testStepFFKEventsEvents').first()
@@ -149,6 +155,7 @@ class TestExecutionEvents(unittest.TestCase):
         c.execute_workflow('basicWorkflowTest', 'helloWorldWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         step_ffk_events_case = case_database.case_db.session.query(case_database.Case) \
             .filter(case_database.Case.name == 'testStepFFKEventsEvents').first()

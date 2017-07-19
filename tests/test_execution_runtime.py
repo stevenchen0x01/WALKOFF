@@ -52,6 +52,7 @@ class TestExecutionRuntime(unittest.TestCase):
         self.controller.execute_workflow('templatedWorkflowTest', 'templatedWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
         self.assertEqual(len(steps), 2, 'Unexpected number of steps executed. '
@@ -79,6 +80,7 @@ class TestExecutionRuntime(unittest.TestCase):
         self.controller.execute_workflow('tieredWorkflow', 'parentWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         steps = executed_steps('defaultController', workflow_name1, self.start, datetime.utcnow())
         steps.extend(executed_steps('defaultController', workflow_name2, self.start, datetime.utcnow()))
@@ -123,6 +125,7 @@ class TestExecutionRuntime(unittest.TestCase):
         WorkflowShutdown.connect(wait_for_shutdown)
         self.controller.execute_workflow('loopWorkflow', 'loopWorkflow')
         shutdown_pool()
+        stop_receiver()
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
 
         names = [step['ancestry'].split(',')[-1] for step in steps]

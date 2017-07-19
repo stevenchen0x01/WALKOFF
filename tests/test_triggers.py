@@ -196,8 +196,8 @@ class TestTriggers(ServerTestCase):
         self.assertEqual(response['executed'][0]['name'], 'testTrigger')
         self.assertListEqual(response['errors'], [])
         step_input = {'result': 'REPEATING: CHANGE INPUT'}
-        self.assertDictEqual(result['value'],
-                             {'result': {'result': 'REPEATING: CHANGE INPUT', 'status': 'Success'}})
+        self.assertEqual(result['value'],
+                             json.dumps({'result': {'result': 'REPEATING: CHANGE INPUT', 'status': 'Success'}}))
 
     def test_trigger_with_change_input_invalid_input(self):
         server.running_context.init_threads()

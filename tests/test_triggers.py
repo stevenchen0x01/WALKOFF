@@ -190,6 +190,8 @@ class TestTriggers(ServerTestCase):
 
         response = self.post_with_status_check('/execution/listener/execute',
                                                headers=self.headers, data=data, status_code=SUCCESS_ASYNC)
+        server.running_context.shutdown_threads()
+
         self.assertSetEqual(set(response.keys()), {'errors', 'executed'})
         self.assertEqual(len(response['executed']), 1)
         self.assertIn('id', response['executed'][0])
@@ -197,7 +199,7 @@ class TestTriggers(ServerTestCase):
         self.assertListEqual(response['errors'], [])
         step_input = {'result': 'REPEATING: CHANGE INPUT'}
         self.assertEqual(result['value'],
-                             json.dumps({'result': {'result': 'REPEATING: CHANGE INPUT', 'status': 'Success'}}))
+                             {'result': {'result': 'REPEATING: CHANGE INPUT', 'status': 'Success'}})
 
     def test_trigger_with_change_input_invalid_input(self):
         server.running_context.init_threads()

@@ -7,7 +7,6 @@ from jinja2 import Template, Markup
 from core import contextdecorator
 from core import nextstep
 import core.config.config
-from core.case import callbacks
 from core.decorators import ActionResult
 from core.executionelement import ExecutionElement
 from core.helpers import (get_app_action_api, InvalidElementConstructed, inputs_xml_to_dict, inputs_to_xml,
@@ -168,15 +167,12 @@ class Step(ExecutionElement):
     def set_input(self, new_input):
         self.input = validate_app_action_parameters(self.input_api, new_input, self.app, self.action)
 
-    def send_callback(self, callback, callback_name, data={}):
-        # if 'data' in data:
-        #     callback.send(self, data=data['data'])
-        # else:
-        #     callback.send(self)
+    def send_callback(self, callback_name, data={}):
+        sender = Step(name=self.name, app=self.app, action=self.action, inputs=self.input)
         if self.results_queue:
-            print("pushing callback: " + callback_name + " onto queue")
+            print("Step pushing callback: " + callback_name + " onto queue")
             self.results_cond.acquire()
-            self.results_queue.put((callback, data))
+            self.results_queue.put((callback_name, sender, data))
             self.results_cond.notify_all()
             self.results_cond.release()
 
@@ -190,21 +186,18 @@ class Step(ExecutionElement):
         Returns:
             The result of the executed function.
         """
-        self.send_callback(callbacks.StepInputValidated, 'Step Input Validated',
-                           {'app': self.app, 'action': self.action})
+        self.send_callback('Step Input Validated')
         try:
             args = dereference_step_routing(self.input, accumulator, 'In step {0}'.format(self.name))
             args = validate_app_action_parameters(self.input_api, args, self.app, self.action)
             action = get_app_action(self.app, self.run)
             result = action(instance, **args)
-            self.send_callback(callbacks.FunctionExecutionSuccess, 'Function Execution Success',
-                               {'name': self.name, 'input': self.input, 'data': {'result': result.as_json()},
-                                'app': self.app, 'action': self.action})
+            self.send_callback('Function Execution Success',
+                               {'name': self.name, 'data': {'result': result.as_json()}})
         except InvalidInput as e:
             formatted_error = format_exception_message(e)
             logger.error('Error calling step {0}. Error: {1}'.format(self.name, formatted_error))
-            # callbacks.StepInputInvalid.send(self)
-            self.send_callback(callbacks.StepInputInvalid, 'Step Input Invalid')
+            self.send_callback('Step Input Invalid')
             self.output = ActionResult('error: {0}'.format(formatted_error), 'InvalidInput')
             raise
         except Exception as e:
@@ -232,8 +225,7 @@ class Step(ExecutionElement):
             next_step = next_step(self.output, accumulator)
             if next_step is not None:
                 self.next_up = next_step
-                # callbacks.ConditionalsExecuted.send(self)
-                self.send_callback(callbacks.ConditionalsExecuted, 'Conditionals Executed')
+                self.send_callback('Conditionals Executed')
                 return next_step
 
     def to_xml(self, *args):

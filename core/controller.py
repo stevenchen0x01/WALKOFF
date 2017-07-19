@@ -115,6 +115,8 @@ def execute_workflow_worker(workflow, subs, communication_queue, uid, start=None
     except Exception as e:
         logger.error('Caught error while executing workflow {0}. {1}'.format(workflow.name,
                                                                      format_exception_message(e)))
+        import traceback
+        print(traceback.format_exc())
     return
 
 

@@ -39,4 +39,4 @@ def __step_execution_error_callback(sender, **kwargs):
     workflow_result = case_database.case_db.session.query(WorkflowResult).filter(
         WorkflowResult.uid == sender.uid).first()
     if workflow_result is not None:
-        __append_step_result(workflow_result, json.loads(kwargs['data']), 'error')
+        __append_step_result(workflow_result, kwargs['data'], 'error')

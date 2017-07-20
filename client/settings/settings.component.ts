@@ -26,9 +26,6 @@ export class SettingsComponent {
 	//User Data Table params
 	users: User[] = [];
 	filterQuery: string = "";
-	rowsOnPage: number = 10;
-	sortBy: string = "username";
-	sortOrder: string = "asc";
 
 	//User modal params
 	userModalTitle: string;

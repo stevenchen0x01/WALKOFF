@@ -220,7 +220,6 @@ class TestWorkflowManipulation(unittest.TestCase):
         def pause_resume_thread():
             self.controller.pause_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
             time.sleep(1.5)
-            print("awoken")
             self.controller.resume_workflow('pauseWorkflowTest', 'pauseWorkflow', uid)
             return
 
@@ -278,7 +277,6 @@ class TestWorkflowManipulation(unittest.TestCase):
         result = {'value': None}
 
         def step_finished_listener(sender, **kwargs):
-            print("in this func")
             result['value'] = kwargs['data']
 
         FunctionExecutionSuccess.connect(step_finished_listener)

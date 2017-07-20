@@ -117,6 +117,7 @@ class AddNewTriggerForm(Form):
 
     playbook = StringField('Playbook', [validators.Length(min=1, max=255), validators.data_required()])
     workflow = StringField('Workflow', [validators.Length(min=1, max=255), validators.data_required()])
+    tag = StringField('Tag', [validators.Length(min=1, max=255), validators.Optional()])
 
 
 class EditTriggerForm(Form):
@@ -124,6 +125,7 @@ class EditTriggerForm(Form):
     conditional = TextAreaField('Conditionals', [validators.Optional()])
     playbook = StringField('Playbook', [validators.Length(min=1, max=255), validators.required()])
     workflow = StringField('Workflow', [validators.Length(min=1, max=255), validators.required()])
+    tag = StringField('Tag', [validators.Length(min=1, max=255), validators.Optional()])
 
 
 class ConditionalArgsField(Form):
@@ -184,24 +186,6 @@ class AddSubscriptionForm(Form):
 
 class DeleteSubscriptionForm(Form):
     ancestry = FieldList(StringField('ancestry'), [validators.Optional()])
-
-
-class SettingsForm(Form):
-    templates_path = StringField('Templates Path', [validators.Optional()])
-    workflows_path = StringField('Workflows Path', [validators.Optional()])
-    profile_visualizations_path = StringField('Profile Visualizations Path', [validators.Optional()])
-    keywords_path = StringField('Keywords Path', [validators.Optional()])
-    db_path = StringField('Database Path', [validators.Optional()])
-    apps_path = StringField('Apps Path', [validators.Optional()])
-    tls_version = StringField('TLS Version', [validators.Optional()])
-    certificate_path = StringField('Certificate Path', [validators.Optional()])
-    https = StringField('HTTPS Enabled', [validators.Optional()])
-    private_key_path = StringField('Private Key Path', [validators.Optional()])
-
-    debug = StringField('Debug', [validators.Optional()])
-    default_server = StringField('Default Server', [validators.Optional()])
-    host = StringField('Host', [validators.Optional()])
-    port = StringField('Port', [validators.Optional()])
 
 
 class UserForm(Form):

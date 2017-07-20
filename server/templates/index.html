@@ -8,19 +8,19 @@
     <!-- Tell the browser to be responsive to screen width -->
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
 
-    <!-- Bootstrap 3.3.6 -->
+    <!-- Bootstrap 3.3.7 -->
     <link rel="stylesheet" href="client/node_modules/bootstrap/dist/css/bootstrap.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="client/node_modules/font-awesome/css/font-awesome.min.css">
     <!-- Ionicons -->
     <!--<link rel="stylesheet" href="<% url_for('static', filename='plugins/ionicons-2.0.1/css/ionicons.min.css' ) %>">-->
     <!-- Theme style -->
-    <link rel="stylesheet" href="client/components/main/AdminLTE.css">
+    <!--<link rel="stylesheet" href="client/main/AdminLTE.css">-->
     <!-- AdminLTE Skins. We have chosen the skin-blue for this starter
             page. However, you can choose any other skin. Make sure you
             apply the skin class to the body tag so the changes take effect.
     -->
-    <link rel="stylesheet" href="client/components/main/skin-blue.min.css">
+    <!--<link rel="stylesheet" href="client/main/skin-blue.min.css">-->
 
     <!-- Polyfill(s) for older browsers -->
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -41,7 +41,7 @@
     <!-- JQuery UI -->
     <!--<script src="<% url_for('static', filename='plugins/jQueryUI/jquery-ui.js') %>"></script>-->
     <!-- AdminLTE App -->
-    <script src="<% url_for('static', filename='dist/js/app.min.js') %>"></script>
+    <!--<script src="<% url_for('static', filename='dist/js/app.min.js') %>"></script>-->
 
     <!--<script src="client/node_modules/rxjs/bundles/Rx.js"></script>
     <script src="client/node_modules/@angular/core/bundles/core.umd.js"></script>
@@ -56,8 +56,19 @@
 
         <!-- 2. Configure SystemJS -->
     <script src="client/systemjs.config.js"></script>
-    <script>
+    <script type="application/javascript">
         SystemJS.import('main').catch(function(err){ console.error(err); });
+
+        localStorage.setItem('authKey', '<% authKey | safe %>');
+        // var default_page = '{{default_page | safe}}';
+        // var apps = {{apps | safe}};
+        localStorage.setItem('currentUser', '<%currentUser%>');
+
+        document.addEventListener("DOMContentLoaded", function(e){
+            if (Notification.permission !== "granted"){
+                Notification.requestPermission();
+            }
+        });
     </script>
 </head>
 <!--

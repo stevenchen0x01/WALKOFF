@@ -1,6 +1,6 @@
 <html>
     <head>
-        <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+        <!--<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">-->
         <link rel="stylesheet" href="{{ url_for('static', filename='jqueryui.css') }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css' ) }}">
 
@@ -8,32 +8,36 @@
             #main {
                 padding: 10px 15px;
             }
+<<<<<<< HEAD
 
             /*.selectColumn{
+=======
+            .selectColumn{
+>>>>>>> 73e4dc25ca3ff0c3c5772b564a790d7e005eb183
                 border:solid;
                 height:800px;
             }
             #appList{
-                width:130px;
+                width: 90%;
                 background-color: #F0F8FF;
                 border: none;
                 margin-left:10px;
             }
             #deviceList{
-                width:130px;
+                width: 90%;
                 background-color: #F0F8FF;
                 border: none;
                 margin-left:10px;
             }
 
             h1 {
-                font-family: 'Lato', sans-serif;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, sans-serif;
                 font-weight: bold;
                 font-size: 30px;
                 color: #255876;
             }
             h3 {
-              font-family: 'Lato', sans-serif;
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, sans-serif;
               font-weight: bold;
               font-size: 20px;
             }
@@ -45,7 +49,7 @@
               background-color: #45AA3B;
               color: #fff;
             }
-            button#addNewDevice {
+            /*button#addNewDevice {
               background-color: #367fa9;
               color: #fff;
               border: none;
@@ -54,7 +58,7 @@
               background-color: #102632;
               color: #fff;
               border: none;
-            }
+            }*/
             button {
               display: block;
               margin-top: 10px;
@@ -63,13 +67,14 @@
             .selectColumn {
               border: none;
             }
-            .col-xs-2 {
+            /*.col-xs-2 {
               width: 30%;
             }*/
 
         </style>
     </head>
     <body>
+<<<<<<< HEAD
         <div id="main">
             <div class="row" id="header">
                 <h1> Device Management </h1>
@@ -80,6 +85,35 @@
                 <div class="col-xs-6">
                     <button class="btn btn-primary pull-right" id="addNewDevice">Add New Device</button>
                 </div>
+=======
+        <div class="content" id="main">
+            <div id="header">
+                <h1> Device Management </h1>
+            </div>
+            <div id="appSelect" class="col-xs-3">
+                <h3> Apps </h3>
+                <select id="appList" size="10" multiple></select>
+            </div>
+            <div id="deviceSelect" class="col-xs-3">
+                <h3> Devices </h3>
+                <select id="deviceList" size="10" multiple></select>
+                <div>
+                    <button id="removeDevice" class="btn btn-danger">Remove Device</button>
+                </div>
+            </div>
+            <div id="parameterSelect" class="col-xs-6 ">
+                <h3> Parameters </h3>
+                <form id="deviceForm">
+                    {% from "pages/_formhelpers.html" import render_field %}
+                    {{ render_field(form.name) }}
+                    {{ render_field(form.username) }}
+                    {{ render_field(form.pw) }}
+                    {{ render_field(form.ipaddr) }}
+                    {{ render_field(form.port) }}
+                </form>
+                <button id="addNewDevice" class="btn btn-primary">Add New Device</button>
+                <button id="editDevice" name="editDevice" class="btn btn-primary">Edit Device</button>
+>>>>>>> 73e4dc25ca3ff0c3c5772b564a790d7e005eb183
             </div>
             <form id="deviceForm">
                 {% from "pages/_formhelpers.html" import render_field %}
@@ -116,6 +150,7 @@
         <script src="{{ url_for('static', filename='plugins/jQuery/jquery-2.2.3.min.js') }}"></script>
         <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.min.js') }}"></script>
         <script src="{{ url_for('static', filename='plugins/jQueryUI/jquery-ui.js' ) }}"></script>
+        <script src="{{ url_for('static', filename='plugins/notifyjs/notify.min.js') }}"></script>
         <script type="app/javascript">
             var apps = {{apps|safe}};
         </script>

@@ -189,9 +189,11 @@ class Workflow(ExecutionElement):
         if 'name' in data:
             sender = Workflow(name=data['name'])
             sender.uid = data['uid']
+            sender.ancestry = data['ancestry']
         else:
             sender = Workflow(name=self.name)
             sender.uid = self.uid
+            sender.ancestry = self.ancestry
         if self.results_queue:
             print("Workflow pushing callback: "+callback_name+" onto queue")
             self.results_cond.acquire()
@@ -271,7 +273,8 @@ class Workflow(ExecutionElement):
                             yield child_step
                         self.send_callback('Workflow Shutdown',
                                            {'uid': self.options.children[child_name].uid,
-                                            'name': self.options.children[child_name].name})
+                                            'name': self.options.children[child_name].name,
+                                            'ancestry': self.options.children[child_name].ancestry})
                     next_step = child_next_step
             current_name = self.__go_to_next_step(current=current_name, next_up=next_step)
             current = self.steps[current_name] if current_name is not None else None
@@ -318,7 +321,8 @@ class Workflow(ExecutionElement):
                 logger.debug('Executing child workflow {0} of workflow {1}'.format(child_name, self.ancestry))
                 self.send_callback('Workflow Execution Start',
                                    {'uid': self.options.children[child_name].uid,
-                                    'name': self.options.children[child_name].name})
+                                    'name': self.options.children[child_name].name,
+                                    'ancestry': self.options.children[child_name].name})
                 child_step_generator = self.options.children[child_name].__steps(start=child_start)
                 return child_step_generator, child_next, child_name
         return None, None

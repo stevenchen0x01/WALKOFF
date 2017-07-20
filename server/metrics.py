@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from core.case.callbacks import StepInputValidated, FunctionExecutionSuccess, StepExecutionError, StepInputInvalid, \
     WorkflowShutdown, WorkflowExecutionStart
@@ -33,7 +32,7 @@ def __action_ended_callback(sender, **kwargs):
 
 @StepExecutionError.connect
 def __action_ended_error_callback(sender, **kwargs):
-    step = json.loads(kwargs['data'])
+    step = kwargs['data']
     __update_error_action_tracker(step['app'], step['action'])
 
 

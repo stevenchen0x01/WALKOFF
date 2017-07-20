@@ -171,7 +171,7 @@ class Step(ExecutionElement):
         sender = Step(name=self.name, app=self.app, action=self.action, inputs=self.input)
         sender.ancestry = self.ancestry
         if self.results_queue:
-            print("Step pushing callback: " + callback_name + " onto queue")
+            # print("Step pushing callback: " + callback_name + " onto queue")
             self.results_cond.acquire()
             self.results_queue.put((callback_name, sender, data))
             self.results_cond.notify_all()

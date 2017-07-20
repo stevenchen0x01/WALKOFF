@@ -70,7 +70,7 @@ def shutdown_pool():
         pool.close()
         pool.join()
         gc.collect()
-        print("***POOL SHUTDOWN***")
+        # print("***POOL SHUTDOWN***")
         threading_is_initialized = False
 
     logger.debug('Controller thread pool shutdown')
@@ -103,7 +103,7 @@ def execute_workflow_worker(workflow, subs, communication_queue, uid, start=None
     Returns:
         "Done" when the workflow has finished execution.
     """
-    print("Worker received "+workflow.name+ " and starting to execute")
+    # print("Worker received "+workflow.name+ " and starting to execute")
     args = {'start': start, 'start_input': start_input}
     subscription.set_subscriptions(subs)
     workflow.uid = uid
@@ -115,8 +115,6 @@ def execute_workflow_worker(workflow, subs, communication_queue, uid, start=None
     except Exception as e:
         logger.error('Caught error while executing workflow {0}. {1}'.format(workflow.name,
                                                                      format_exception_message(e)))
-        import traceback
-        print(traceback.format_exc())
     return
 
 
@@ -426,7 +424,7 @@ class Controller(object):
 
             communication_queue = manager.Queue()
             self.workflow_queue[uid] = communication_queue
-            print("Controller pushing workflow "+workflow.name+" onto queue")
+            # print("Controller pushing workflow "+workflow.name+" onto queue")
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
             else:

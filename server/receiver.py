@@ -14,12 +14,12 @@ def send_callback(callback, sender, data):
 
 
 def receive():
-    print("receiver started")
+    # print("receiver started")
     while True:
 
         core.controller.workflow_results_condition.acquire()
         while core.controller.workflow_results_queue.empty():
-            print("queue is empty, receiver waiting on condition")
+            # print("queue is empty, receiver waiting on condition")
             core.controller.workflow_results_condition.wait(timeout=1)
         callback, sender, data = core.controller.workflow_results_queue.get()
         core.controller.workflow_results_condition.release()
@@ -52,7 +52,7 @@ def receive():
         elif callback == "Conditionals Executed":
             send_callback(callbacks.ConditionalsExecuted, sender, data)
 
-    print("receiver returning")
+    # print("receiver returning")
     return
 
 

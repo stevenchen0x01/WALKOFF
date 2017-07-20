@@ -195,7 +195,7 @@ class Workflow(ExecutionElement):
             sender.uid = self.uid
             sender.ancestry = self.ancestry
         if self.results_queue:
-            print("Workflow pushing callback: "+callback_name+" onto queue")
+            # print("Workflow pushing callback: "+callback_name+" onto queue")
             self.results_cond.acquire()
             self.results_queue.put((callback_name, sender, data))
             self.results_cond.notify_all()
@@ -224,9 +224,7 @@ class Workflow(ExecutionElement):
             if self.communication_queue and not self.communication_queue.empty():
                 data = self.communication_queue.get_nowait()
                 if data == 'pause':
-                    print("PAUSED!")
                     res = self.communication_queue.get()
-                    print("RESUMED!")
                     if not res == 'resume':
                         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:

@@ -1,12 +1,8 @@
 import unittest
 from core.decorators import *
 from apps import Event
-import socket
-try:
-    from importlib import reload
-except ImportError:
-    from imp import reload
-from gevent import monkey, sleep, spawn
+import threading
+import time
 from timeit import default_timer
 
 
@@ -61,15 +57,6 @@ class TestDecorators(unittest.TestCase):
 
 class TestEventDecorator(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        # monkey.patch_socket()
-        pass
-
-    @classmethod
-    def tearDownClass(cls):
-        reload(socket)
-
     def test_event_is_tagged_as_action(self):
         event1 = Event()
 
@@ -110,13 +97,14 @@ class TestEventDecorator(unittest.TestCase):
         test_data = {1: 2}
 
         def sender():
-            sleep(0.1)
+            time.sleep(0.1)
             event1.trigger(test_data)
-
+        thread = threading.Thread(target=sender)
         start = default_timer()
-        spawn(sender)
+        thread.start()
         result = b.ev()
         duration = default_timer() - start
+        thread.join()
         self.assertEqual(result, ActionResult(test_data, 'Success'))
         self.assertSetEqual(event1.receivers, set())
         self.assertTrue(duration > 0.01)
@@ -133,10 +121,12 @@ class TestEventDecorator(unittest.TestCase):
         test_data = {1: 2}
 
         def sender():
-            sleep(0.1)
+            time.sleep(0.1)
             event1.trigger(test_data)
 
-        spawn(sender)
+        thread = threading.Thread(target=sender)
+        thread.start()
         result = b.ev()
+        thread.join()
         self.assertEqual(result, ActionResult('Getting event Event1 timed out at 0 seconds', 'EventTimedOut'))
         self.assertSetEqual(event1.receivers, set())

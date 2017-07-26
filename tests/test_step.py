@@ -10,12 +10,6 @@ from tests.config import test_apps_path, function_api_path
 from core.instance import Instance
 from core.helpers import (import_all_apps, UnknownApp, UnknownAppAction, InvalidInput, import_all_flags,
                           import_all_filters)
-import gevent
-import gevent.monkey
-try:
-    from importlib import reload
-except ImportError:
-    from imp import reload
 
 
 class TestStep(unittest.TestCase):
@@ -26,7 +20,6 @@ class TestStep(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=function_api_path)
-        # gevent.monkey.patch_socket()
 
     def setUp(self):
         self.basic_json = {'app': 'HelloWorld',
@@ -44,10 +37,6 @@ class TestStep(unittest.TestCase):
                                  'next': [],
                                  'position': {},
                                  'input': {}}
-
-    @classmethod
-    def tearDownClass(cls):
-        reload(socket)
 
     def __compare_init(self, elem, name, parent_name, action, app, device, inputs, next_steps, ancestry,
                        widgets, risk=0., position=None):
@@ -555,15 +544,18 @@ class TestStep(unittest.TestCase):
 
         import time
         from tests.apps.HelloWorld.events import event1
+        import threading
 
         def sender():
-            gevent.sleep(0.1)
+            time.sleep(0.1)
             event1.trigger(3)
 
+        thread = threading.Thread(target=sender)
         start = time.time()
-        gevent.spawn(sender)
+        thread.start()
         result = step.execute(instance.instance, {})
         end = time.time()
+        thread.join()
         self.assertEqual(result, ActionResult(4, 'Success'))
         self.assertTrue((end-start) > 0.1)
 

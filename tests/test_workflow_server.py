@@ -10,7 +10,7 @@ import core.case.subscription
 import core.case.database as case_database
 import os
 import core.config.paths
-from gevent.event import Event
+from threading import Event
 from core.case.callbacks import WorkflowShutdown
 from server.return_codes import *
 import server.workflowresults
@@ -804,10 +804,9 @@ class TestWorkflowServer(ServerTestCase):
         setup_subscriptions_for_step(workflow_name, ['start'])
         start = datetime.utcnow()
 
+        @WorkflowShutdown.connect
         def wait_for_completion(sender, **kwargs):
             sync.set()
-
-        WorkflowShutdown.connect(wait_for_completion)
 
         response = self.post_with_status_check('/playbooks/test/workflows/helloWorldWorkflow/execute',
                                                headers=self.headers,
@@ -830,10 +829,9 @@ class TestWorkflowServer(ServerTestCase):
         data = {"playbook": 'basicWorkflow',
                 "template": 'helloWorldWorkflow'}
 
+        @WorkflowShutdown.connect
         def wait_for_completion(sender, **kwargs):
             sync.set()
-
-        WorkflowShutdown.connect(wait_for_completion)
 
         self.put_with_status_check('/playbooks/basicWorkflow/workflows/{0}'.format(workflow_name),
                                    data=data, headers=self.headers, status_code=OBJECT_CREATED)

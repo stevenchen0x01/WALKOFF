@@ -24,6 +24,7 @@ class MetricsTest(ServerTestCase):
 
         with server.running_context.flask_app.app_context():
             server.running_context.shutdown_threads()
+        stop_receiver()
 
         self.assertListEqual(list(metrics.app_metrics.keys()), ['HelloWorld'])
         orderless_list_compare(self, list(metrics.app_metrics['HelloWorld'].keys()), ['count', 'actions'])
@@ -68,6 +69,7 @@ class MetricsTest(ServerTestCase):
 
         with server.running_context.flask_app.app_context():
             server.running_context.shutdown_threads()
+        stop_receiver()
 
         keys = [error_key, tiered_child_key, tiered_parent_key, multiaction_key]
         orderless_list_compare(self,

@@ -1,19 +1,17 @@
 import json
 from flask import Blueprint, Response
 from flask_security import auth_token_required, roles_accepted
-from gevent.event import Event, AsyncResult
 
 events_page = Blueprint('events_page', __name__)
 
-__case_event_json = AsyncResult()
-__sync_signal = Event()
 
-
-def __case_event_stream():
+def __case_event_generator():
     while True:
-        data = __case_event_json.get()
+        data = yield
         yield 'data: %s\n\n' % data
-        __sync_signal.wait()
+
+__case_event_stream = __case_event_generator()
+__case_event_stream.send(None)
 
 
 def __push_to_case_stream(sender, **kwargs):
@@ -21,9 +19,7 @@ def __push_to_case_stream(sender, **kwargs):
            'ancestry': sender.ancestry}
     if 'data' in kwargs:
         out['data'] = kwargs['data']
-    __case_event_json.set(json.dumps(out))
-    __sync_signal.set()
-    __sync_signal.clear()
+    __case_event_stream.send(json.dumps(out))
 
 
 def setup_case_stream():
@@ -43,5 +39,5 @@ def stream_case_events():
 
     @roles_accepted(*running_context.user_roles['/cases'])
     def inner():
-        return Response(__case_event_stream(), mimetype='text/event-stream')
+        return Response(__case_event_stream, mimetype='text/event-stream')
     return inner()

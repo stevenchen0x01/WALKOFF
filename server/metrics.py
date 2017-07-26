@@ -1,6 +1,10 @@
 from datetime import datetime
 from core.case.callbacks import StepInputValidated, FunctionExecutionSuccess, StepExecutionError, StepInputInvalid, \
     WorkflowShutdown, WorkflowExecutionStart
+from threading import Lock
+
+app_metrics_lock = Lock()
+workflow_metrics_lock = Lock()
 
 app_metrics = {}
 '''
@@ -22,7 +26,9 @@ __workflow_tmp = {}
 @StepInputValidated.connect
 def __action_started_callback(sender, **kwargs):
     # TODO: This identifier should be replaced by step id when that happens
+    app_metrics_lock.acquire()
     __action_tmp[(sender.app, sender.action)] = datetime.utcnow()
+    app_metrics_lock.release()
 
 
 @FunctionExecutionSuccess.connect
@@ -45,6 +51,7 @@ def __update_error_action_tracker(app, action):
 
 
 def __update_action_tracker(form, app, action):
+    app_metrics_lock.acquire()
     if (app, action) in __action_tmp:
         execution_time = datetime.utcnow() - __action_tmp[(app, action)]
         if app not in app_metrics:
@@ -59,16 +66,20 @@ def __update_action_tracker(form, app, action):
             app_metrics[app]['actions'][action][form]['avg_time'] = \
                 (app_metrics[app]['actions'][action][form]['avg_time'] + execution_time) / 2
         del __action_tmp[(app, action)]
+    app_metrics_lock.release()
 
 
 @WorkflowExecutionStart.connect
 def __workflow_started_callback(sender, **kwargs):
     # TODO: This identifier should be replaced by step id when that happens
+    workflow_metrics_lock.acquire()
     __workflow_tmp[sender.name] = datetime.utcnow()
+    workflow_metrics_lock.release()
 
 
 @WorkflowShutdown.connect
 def __workflow_ended_callback(sender, **kwargs):
+    workflow_metrics_lock.acquire()
     if sender.name in __workflow_tmp:
         execution_time = datetime.utcnow() - __workflow_tmp[sender.name]
         if sender.name not in workflow_metrics:
@@ -77,3 +88,4 @@ def __workflow_ended_callback(sender, **kwargs):
             workflow_metrics[sender.name]['count'] += 1
             workflow_metrics[sender.name]['avg_time'] = (workflow_metrics[sender.name]['avg_time'] + execution_time) / 2
         del __workflow_tmp[sender.name]
+    workflow_metrics_lock.release()

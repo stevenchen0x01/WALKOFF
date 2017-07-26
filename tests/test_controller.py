@@ -2,7 +2,7 @@ import unittest
 
 from core.controller import Controller, _WorkflowKey, initialize_threading, shutdown_pool
 from tests import config
-from apscheduler.schedulers.gevent import GeventScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 from core import helpers
 import core.config.config
@@ -31,7 +31,7 @@ class TestController(unittest.TestCase):
         self.assertEqual(self.controller.name, "testController")
         self.assertEqual(self.controller.instances, {})
         self.assertIsNone(self.controller.tree)
-        self.assertIsInstance(self.controller.scheduler, GeventScheduler)
+        self.assertIsInstance(self.controller.scheduler, BackgroundScheduler)
         self.assertEqual(self.controller.ancestry, ["testController"])
 
     def test_load_workflow_from_file(self):

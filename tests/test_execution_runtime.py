@@ -108,22 +108,20 @@ class TestExecutionRuntime(unittest.TestCase):
     """
 
     def test_loop(self):
-        from gevent import monkey, spawn
-        from gevent.event import Event
         from core.case.callbacks import WorkflowShutdown
-        # monkey.patch_all()
-
+        import threading
         workflow_name = construct_workflow_name_key('loopWorkflow', 'loopWorkflow')
         step_names = ['start', '1']
         setup_subscriptions_for_step(workflow_name, step_names)
 
-        waiter = Event()
+        waiter = threading.Event()
 
+        @WorkflowShutdown.connect
         def wait_for_shutdown(sender, **kwargs):
             waiter.set()
 
-        WorkflowShutdown.connect(wait_for_shutdown)
         self.controller.execute_workflow('loopWorkflow', 'loopWorkflow')
+        waiter.wait(timeout=1)
         shutdown_pool()
         stop_receiver()
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())

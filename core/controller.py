@@ -11,7 +11,7 @@ from apscheduler.events import (EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_A
                                 EVENT_SCHEDULER_START, EVENT_SCHEDULER_SHUTDOWN,
                                 EVENT_SCHEDULER_PAUSED, EVENT_SCHEDULER_RESUMED)
 from apscheduler.schedulers.base import STATE_PAUSED, STATE_RUNNING, STATE_STOPPED
-from apscheduler.schedulers.gevent import GeventScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 import core.config.config
 import core.config.paths
 from core import workflow as wf
@@ -70,10 +70,10 @@ def shutdown_pool():
         pool.close()
         pool.join()
         gc.collect()
-        # print("***POOL SHUTDOWN***")
         threading_is_initialized = False
 
     logger.debug('Controller thread pool shutdown')
+
 
 
 def init_worker_globals(rq, rc):
@@ -134,7 +134,7 @@ class Controller(object):
         self.instances = {}
         self.tree = None
 
-        self.scheduler = GeventScheduler()
+        self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.__scheduler_listener(),
                                     EVENT_SCHEDULER_START | EVENT_SCHEDULER_SHUTDOWN
                                     | EVENT_SCHEDULER_PAUSED | EVENT_SCHEDULER_RESUMED

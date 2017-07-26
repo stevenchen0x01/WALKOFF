@@ -4,7 +4,7 @@ import socket
 from datetime import datetime
 import threading
 import time
-from gevent.event import Event
+from threading import Event
 from os import path
 from core.controller import Controller, initialize_threading, shutdown_pool
 from core.workflow import Workflow
@@ -22,10 +22,6 @@ from tests.util.case_db_help import executed_steps, setup_subscriptions_for_step
 from core.controller import _WorkflowKey
 from server.receiver import start_receiver, stop_receiver
 from timeit import default_timer
-try:
-    from importlib import reload
-except ImportError:
-    from imp import reload
 
 
 class TestWorkflowManipulation(unittest.TestCase):
@@ -53,7 +49,6 @@ class TestWorkflowManipulation(unittest.TestCase):
         self.controller.workflows = None
         case_database.case_db.tear_down()
         case_subscription.clear_subscriptions()
-        reload(socket)
         stop_receiver()
         shutdown_pool()
 
@@ -240,34 +235,33 @@ class TestWorkflowManipulation(unittest.TestCase):
 
     def test_pause_and_resume_workflow_breakpoint(self):
         self.controller.load_workflows_from_file(path=path.join(config.test_workflows_path, 'pauseWorkflowTest.playbook'))
-
+        self.controller.add_workflow_breakpoint_steps('pauseWorkflowTest', 'pauseWorkflow', ['2'])
         waiter = Event()
         uid = None
 
+        @FunctionExecutionSuccess.connect
         def step_2_finished_listener(sender, **kwargs):
             if sender.name == '2':
                 waiter.set()
 
         def pause_resume_thread():
-            self.controller.add_workflow_breakpoint_steps('pauseWorkflowTest', 'pauseWorkflow', ['2'])
             time.sleep(1.5)
             self.controller.resume_breakpoint_step('pauseWorkflowTest', 'pauseWorkflow', uid)
             return
 
+        thread = threading.Thread(target=pause_resume_thread)
+
+        @StepInputValidated.connect
         def step_1_about_to_begin_listener(sender, **kwargs):
             if sender.name == '1':
-                threading.Thread(target=pause_resume_thread).start()
-                time.sleep(0)
-
-        FunctionExecutionSuccess.connect(step_2_finished_listener)
-        StepInputValidated.connect(step_1_about_to_begin_listener)
+                thread.start()
 
         start = default_timer()
         uid = self.controller.execute_workflow('pauseWorkflowTest', 'pauseWorkflow')
-
         waiter.wait(timeout=5)
+        thread.join()
         duration = default_timer() - start
-        self.assertTrue(2.5 < duration < 6)
+        self.assertTrue(2.5 < duration < 5)
 
     def test_change_step_input(self):
         input_list = [{'key': 'call', 'value': 'CHANGE INPUT'}]

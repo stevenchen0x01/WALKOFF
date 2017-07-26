@@ -9,7 +9,8 @@ from tests.util.assertwrappers import orderless_list_compare
 from tests.util.case_db_help import *
 from tests.apps import App
 from server.receiver import start_receiver, stop_receiver
-
+from core.case.callbacks import FunctionExecutionSuccess
+import threading
 
 class TestSimpleWorkflow(unittest.TestCase):
     @classmethod
@@ -57,6 +58,7 @@ class TestSimpleWorkflow(unittest.TestCase):
         self.controller.execute_workflow('multiactionWorkflowTest', 'multiactionWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
         self.assertEqual(len(steps), 2)
@@ -80,6 +82,7 @@ class TestSimpleWorkflow(unittest.TestCase):
         self.controller.execute_workflow('multistepError', 'multiactionErrorWorkflow')
 
         shutdown_pool()
+        stop_receiver()
 
         steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
         self.assertEqual(len(steps), 2)
@@ -98,31 +101,33 @@ class TestSimpleWorkflow(unittest.TestCase):
         step_names = ['start', '1', '2']
         setup_subscriptions_for_step(workflow_name, step_names)
         self.controller.execute_workflow('dataflowTest', 'dataflowWorkflow')
+        steps = []
+        lock = threading.Lock()
+
+        @FunctionExecutionSuccess.connect
+        def xx(sender, **kwargs):
+            lock.acquire()
+            steps.append(sender.name)
+            lock.release()
 
         shutdown_pool()
+        stop_receiver()
 
-        steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
-        self.assertEqual(len(steps), 3)
-        names = [step['ancestry'].split(',')[-1] for step in steps]
-        orderless_list_compare(self, names, ['start', '1', '2'])
-        name_result = {'start': {'result': 6, 'status': 'Success'},
-                       '1': {'result': 6, 'status': 'Success'},
-                       '2': {'result': 15, 'status': 'Success'}}
-        for step in steps:
-            name = step['ancestry'].split(',')[-1]
-            self.assertIn(name, name_result)
-            result = step['data']
-            self.assertDictEqual(result['result'], name_result[name])
+        self.assertListEqual(steps, step_names)
 
     def test_workflow_with_dataflow_step_not_executed(self):
-        workflow_name = construct_workflow_name_key('dataflowTest', 'dataflowWorkflow')
-        step_names = ['start', '1']
-        setup_subscriptions_for_step(workflow_name, step_names)
-        self.controller.execute_workflow('dataflowTest', 'dataflowWorkflow')
+        self.controller.execute_workflow('dataflowTestStepNotExecuted', 'dataflowWorkflow')
+
+        steps = []
+        lock = threading.Lock()
+
+        @FunctionExecutionSuccess.connect
+        def xx(sender, **kwargs):
+            lock.acquire()
+            steps.append(sender.name)
+            lock.release()
 
         shutdown_pool()
+        stop_receiver()
 
-        steps = executed_steps('defaultController', workflow_name, self.start, datetime.utcnow())
-        self.assertEqual(len(steps), 2)
-        names = [step['ancestry'].split(',')[-1] for step in steps]
-        orderless_list_compare(self, names, ['start', '1'])
+        self.assertEqual(steps, ['start'])

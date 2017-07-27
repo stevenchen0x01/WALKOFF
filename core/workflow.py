@@ -7,7 +7,8 @@ from xml.etree import ElementTree
 from core import options
 from core.config import paths
 from core.executionelement import ExecutionElement
-from core.helpers import (construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp, InvalidInput,
+from core.helpers import (construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp,
+                          InvalidInput,
                           format_exception_message)
 from core.instance import Instance
 from core.step import Step
@@ -291,12 +292,10 @@ class Workflow(ExecutionElement):
 
     def __execute_step(self, step, instance):
         # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk
-        data = { "data":
-                    {"app": step.app,
-                     "action": step.action,
-                     "name": step.name,
-                     "input": step.input}
-        }
+        data = {"data": {"app": step.app,
+                         "action": step.action,
+                         "name": step.name,
+                         "input": step.input}}
         try:
             step.execute(instance=instance(), accumulator=self.accumulator)
             data['data']['result'] = step.output.as_json()
@@ -315,7 +314,7 @@ class Workflow(ExecutionElement):
             child_name, child_start, child_next = params[0].lstrip('@'), params[1], params[2]
             child_name = construct_workflow_name_key(self.playbook_name, child_name)
             if (child_name in self.options.children
-                    and type(self.options.children[child_name]).__name__ == 'Workflow'):
+                and type(self.options.children[child_name]).__name__ == 'Workflow'):
                 logger.debug('Executing child workflow {0} of workflow {1}'.format(child_name, self.ancestry))
                 self.send_callback('Workflow Execution Start',
                                    {'uid': self.options.children[child_name].uid,

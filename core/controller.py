@@ -49,8 +49,9 @@ def initialize_threading():
     workflow_results_queue = multiprocessing.Queue()
     workflow_results_condition = multiprocessing.Condition()
 
-    pool = multiprocessing.Pool(processes=NUM_PROCESSES, initializer=init_worker_globals, initargs=(workflow_results_queue,
-                                                                                    workflow_results_condition,))
+    pool = multiprocessing.Pool(
+        processes=NUM_PROCESSES, initializer=init_worker_globals,
+        initargs=(workflow_results_queue, workflow_results_condition, core.config.config))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -75,19 +76,19 @@ def shutdown_pool():
     logger.debug('Controller thread pool shutdown')
 
 
-
-def init_worker_globals(rq, rc):
+def init_worker_globals(rq, rc, config):
     global results_queue
     global results_condition
+    import core.config.config
+    from core.helpers import import_all_apps
 
     results_queue = rq
     results_condition = rc
-
-    from core.helpers import import_all_apps
     import_all_apps()
-
-    from core.config.config import initialize
-    initialize()
+    core.config.config.app_apis = config.app_apis
+    core.config.config.function_apis = config.function_apis
+    core.config.config.flags = config.flags
+    core.config.config.filters = config.filters
 
 
 def execute_workflow_worker(workflow, subs, communication_queue, uid, start=None, start_input=None):
@@ -149,7 +150,6 @@ class Controller(object):
 
     # TODO: Turns out this doesn't work at all
     def __workflow_completed_callback(self, workflow, **kwargs):
-        print('COMPLETED')
         if workflow.uuid in self.workflow_status:
             self.workflow_status[workflow.uuid] = WORKFLOW_COMPLETED
 

@@ -10,8 +10,8 @@ wtforms >= 2.1
 werkzeug == 0.11.15
 requests >= 2.9.1
 APscheduler >= 3.0.0
-gevent >= 1.2 
 connexion == 1.1.10
 pyaes == 1.6.0
 dicttoxml
 pyyaml
+uwsgi > 1.4

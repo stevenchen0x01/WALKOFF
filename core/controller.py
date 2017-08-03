@@ -27,7 +27,6 @@ pool = None
 workflow_results_queue = None
 workflow_results_condition = None
 manager = None
-NUM_PROCESSES = 2
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ def initialize_threading():
     workflow_results_condition = multiprocessing.Condition()
 
     pool = multiprocessing.Pool(
-        processes=NUM_PROCESSES, initializer=init_worker_globals,
+        processes=core.config.config.num_processes, initializer=init_worker_globals,
         initargs=(workflow_results_queue, workflow_results_condition, core.config.config, apps.App))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')

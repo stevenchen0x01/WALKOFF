@@ -82,7 +82,7 @@ execution_settings = {
     "maxJobs": 2
 }
 
-num_threads = 5
+num_processes = 5
 threadpool_shutdown_timeout_sec = 3
 
 # Function Dict Paths/Initialization
@@ -146,6 +146,7 @@ def load_flagfilter_apis(path=None):
 def initialize():
     global filters
     global flags
+
     load_config()
     from core.helpers import import_all_apps, import_all_filters, import_all_flags
     import_all_apps()

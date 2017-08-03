@@ -8,7 +8,6 @@ import tests.config
 import server.flaskserver
 from core.helpers import import_all_apps, import_all_flags, import_all_filters
 from tests.apps import App
-import core.controller
 
 
 class ServerTestCase(unittest.TestCase):
@@ -46,7 +45,7 @@ class ServerTestCase(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=tests.config.function_api_path)
-        core.controller.NUM_PROCESSES = 1
+        core.config.config.num_processes = 2
 
     @classmethod
     def tearDownClass(cls):

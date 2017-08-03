@@ -2,7 +2,6 @@ import unittest
 import core.config.config
 from core.case import database
 from core.case import subscription
-import core.controller
 from core.controller import Controller, initialize_threading, shutdown_pool
 from core.helpers import construct_workflow_name_key, import_all_flags, import_all_filters, import_all_apps
 from tests import config
@@ -23,7 +22,7 @@ class TestSimpleWorkflow(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
-        core.controller.NUM_PROCESSES = 1
+        core.config.config.num_processes = 2
 
     def setUp(self):
         case_database.initialize()

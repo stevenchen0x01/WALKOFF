@@ -45,13 +45,15 @@ def initialize_threading():
     global workflow_results_condition
     global manager
 
+    import apps
+
     manager = multiprocessing.Manager()
     workflow_results_queue = multiprocessing.Queue()
     workflow_results_condition = multiprocessing.Condition()
 
     pool = multiprocessing.Pool(
         processes=NUM_PROCESSES, initializer=init_worker_globals,
-        initargs=(workflow_results_queue, workflow_results_condition, core.config.config))
+        initargs=(workflow_results_queue, workflow_results_condition, core.config.config, apps.App))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -76,15 +78,15 @@ def shutdown_pool():
     logger.debug('Controller thread pool shutdown')
 
 
-def init_worker_globals(rq, rc, config):
+def init_worker_globals(rq, rc, config, app):
     global results_queue
     global results_condition
     import core.config.config
-    from core.helpers import import_all_apps
+    import apps
 
     results_queue = rq
     results_condition = rc
-    import_all_apps()
+    apps.App.registry = app.registry
     core.config.config.app_apis = config.app_apis
     core.config.config.function_apis = config.function_apis
     core.config.config.flags = config.flags

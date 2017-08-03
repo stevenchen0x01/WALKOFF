@@ -22,8 +22,7 @@ def get_ssl_context():
             context.load_cert_chain(paths.certificate_path, paths.private_key_path)
             return context
         else:
-            flaskserver.display_if_file_not_found(paths.certificate_path)
-            flaskserver.display_if_file_not_found(paths.private_key_path)
+            print('Cannot locate certificates')
     return None
 
 
@@ -46,7 +45,7 @@ def setup_logger():
         logger.info("Basic logging is being used")
 
 
-if __name__ == "__main__":
+def run():
     # The order of these imports matter for initialization (should probably be fixed)
     from server import flaskserver
     import core.case.database as case_database
@@ -66,14 +65,19 @@ if __name__ == "__main__":
         proto = 'https' if ssl_context else 'http'
         logger.info('Listening on host {0}://{1}:{2}'.format(proto, host, port))
 
-        try:
-            app.run()
-        except KeyboardInterrupt:
-            print('EHRHEHERHEHRHEHRHREH')
-            from core.controller import shutdown_pool
-            from server.receiver import stop_receiver
+        app.run()
 
-            shutdown_pool()
-            stop_receiver()
-            logger.info('Shutting down server')
+
+if __name__ == "__main__":
+    try:
+        run()
+    except KeyboardInterrupt:
+        logger.info('Caught KeyboardInterrupt!')
+    finally:
+        from core.controller import shutdown_pool
+        from server.receiver import stop_receiver
+
+        stop_receiver()
+        shutdown_pool()
+        logger.info('Shutting down server')
 

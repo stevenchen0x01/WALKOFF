@@ -2,6 +2,7 @@ import unittest
 import core.config.config
 from core.case import database
 from core.case import subscription
+import core.controller
 from core.controller import Controller, initialize_threading, shutdown_pool
 from core.helpers import construct_workflow_name_key, import_all_flags, import_all_filters, import_all_apps
 from tests import config
@@ -12,6 +13,7 @@ from server.receiver import start_receiver, stop_receiver
 from core.case.callbacks import FunctionExecutionSuccess
 import threading
 
+
 class TestSimpleWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -21,11 +23,13 @@ class TestSimpleWorkflow(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
+        core.controller.NUM_PROCESSES = 1
 
     def setUp(self):
         case_database.initialize()
         self.controller = Controller(workflows_path=config.test_workflows_path)
         self.start = datetime.utcnow()
+
         initialize_threading()
         start_receiver()
 

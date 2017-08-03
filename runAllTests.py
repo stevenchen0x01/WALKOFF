@@ -26,10 +26,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('\nInterrupted! Ending full test')
         successful = False
-        sys.exit(successful)
     finally:
-        from core.controller import shutdown_pool
-        from server.receiver import stop_receiver
-        stop_receiver()
-        shutdown_pool()
         sys.exit(not successful)

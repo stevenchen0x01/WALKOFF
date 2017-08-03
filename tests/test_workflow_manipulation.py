@@ -1,12 +1,12 @@
 import ast
 import unittest
-import socket
 from datetime import datetime
 import threading
 import time
 from threading import Event
 from os import path
 from core.controller import Controller, initialize_threading, shutdown_pool
+import core.controller
 from core.workflow import Workflow
 from core.step import Step
 from core.instance import Instance
@@ -33,6 +33,7 @@ class TestWorkflowManipulation(unittest.TestCase):
         core.config.config.flags = import_all_flags('tests.util.flagsfilters')
         core.config.config.filters = import_all_filters('tests.util.flagsfilters')
         core.config.config.load_flagfilter_apis(path=config.function_api_path)
+        core.controller.NUM_PROCESSES = 1
 
     def setUp(self):
         initialize_threading()

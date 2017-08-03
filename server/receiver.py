@@ -14,7 +14,6 @@ def send_callback(callback, sender, data):
 
 
 def receive():
-    # print("receiver started")
     while True:
 
         core.controller.workflow_results_condition.acquire()
@@ -51,9 +50,6 @@ def receive():
             send_callback(callbacks.StepInputInvalid, sender, data)
         elif callback == "Conditionals Executed":
             send_callback(callbacks.ConditionalsExecuted, sender, data)
-
-    # print("receiver returning")
-    return
 
 
 def start_receiver():

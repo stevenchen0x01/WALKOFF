@@ -11,11 +11,15 @@
 		'@angular': 'client/node_modules/@angular',
 		'angular2-datatable': 'client/node_modules/angular2-datatable',
 		'lodash': 'client/node_modules/lodash',
+		'jquery': 'client/node_modules/jquery/dist/jquery.min.js',
 		'ts': 'client/node_modules/plugin-typescript/lib/plugin.js',
 		'tsconfig.json': 'client/tsconfig.json',
 		'typescript': 'client/node_modules/typescript/lib/typescript.js',
 		'@ng-bootstrap/ng-bootstrap': 'client/node_modules/@ng-bootstrap/ng-bootstrap/bundles/ng-bootstrap.js',
-		'@swimlane/ngx-datatable': 'client/node_modules/@swimlane/ngx-datatable/release/index.js'
+		'@swimlane/ngx-datatable': 'client/node_modules/@swimlane/ngx-datatable/release/index.js',
+		'ng2-toasty': 'client/node_modules/ng2-toasty/bundles/index.umd.js',
+		'ng2-select2': 'client/node_modules/ng2-select2/ng2-select2.bundle.js',
+		'ngx-contextmenu': 'client/node_modules/ngx-contextmenu/lib/ngx-contextmenu.js',
 	};
 
 	// packages tells the System loader how to load when no filename and/or no extension

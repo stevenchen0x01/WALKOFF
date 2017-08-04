@@ -1,6 +1,4 @@
 import json
-import os
-from server import flaskserver as server
 from tests.util.assertwrappers import orderless_list_compare
 from tests.config import test_workflows_path_with_generated, test_workflows_path
 import core.config.paths
@@ -16,10 +14,10 @@ class TestServer(ServerTestCase):
 
     def test_list_apps(self):
         expected_apps = ['HelloWorld', 'DailyQuote']
-        response = self.app.get('/apps', headers=self.headers)
+        response = self.app.get('/api/apps', headers=self.headers)
         self.assertEqual(response.status_code, SUCCESS)
         response = json.loads(response.get_data(as_text=True))
-        orderless_list_compare(self, response['apps'], expected_apps)
+        orderless_list_compare(self, response, expected_apps)
 
     def test_list_widgets(self):
         expected = {'HelloWorld': ['testWidget', 'testWidget2'], 'DailyQuote': []}
@@ -29,7 +27,7 @@ class TestServer(ServerTestCase):
         self.assertDictEqual(response, expected)
 
     def test_read_filters(self):
-        response = self.get_with_status_check('/filters', headers=self.headers)
+        response = self.get_with_status_check('/api/filters', headers=self.headers)
         expected = {'sub_top_filter': {'args': []},
                     'mod1_filter2': {'args': [{'required': True, 'type': 'number', 'name': 'arg1'}]},
                     'mod1_filter1': {'args': []},
@@ -51,7 +49,7 @@ class TestServer(ServerTestCase):
         self.assertDictEqual(response, {'filters': expected})
 
     def test_read_flags(self):
-        response = self.get_with_status_check('/flags', headers=self.headers)
+        response = self.get_with_status_check('/api/flags', headers=self.headers)
         expected = {
             'count':
                 {'description': 'Compares two numbers',
@@ -126,7 +124,7 @@ class TestConfiguration(ServerTestCase):
                     'https': bool(core.config.config.https),
                     'tls_version': core.config.config.tls_version,
                     'clear_case_db_on_startup': bool(core.config.config.reinitialize_case_db_on_startup)}
-        response = self.get_with_status_check('/configuration', headers=self.headers)
+        response = self.get_with_status_check('/api/configuration', headers=self.headers)
         self.assertDictEqual(response, expected)
 
     def test_set_configuration(self):
@@ -138,7 +136,7 @@ class TestConfiguration(ServerTestCase):
                 "host": 'host_reset',
                 "port": 1100}
 
-        self.post_with_status_check('/configuration', headers=self.headers, data=json.dumps(data),
+        self.post_with_status_check('/api/configuration', headers=self.headers, data=json.dumps(data),
                                     content_type='application/json')
 
         expected = {core.config.paths.workflows_path: 'workflows_path_reset',

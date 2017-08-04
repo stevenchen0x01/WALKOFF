@@ -63,7 +63,7 @@ class Role(Base, RoleMixin):
         """
         self.description = description
 
-    def to_string(self):
+    def as_json(self):
         """Returns the dictionary representation of the Role object.
         
         Returns:
@@ -111,7 +111,7 @@ class User(Base, UserMixin):
         """
         return {"id": self.id,
                 "username": self.email,
-                "roles": [role.to_string() for role in self.roles],
+                "roles": [role.as_json() for role in self.roles],
                 "active": self.active}
 
     def set_roles(self, roles):
@@ -121,8 +121,8 @@ class User(Base, UserMixin):
             roles (list[str]): A list of Role names with which the User will be associated.
         """
         for role in roles:
-            if role and not self.has_role(role):
-                q = user_datastore.find_role(role)
+            if role['name'] and not self.has_role(role['name']):
+                q = user_datastore.find_role(role['name'])
                 if q:
                     user_datastore.add_role_to_user(self, q)
 

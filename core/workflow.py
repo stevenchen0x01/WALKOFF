@@ -8,7 +8,8 @@ from core import options
 from core.case import callbacks
 from core.config import paths
 from core.executionelement import ExecutionElement
-from core.helpers import construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp, InvalidInput
+from core.helpers import (construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp, InvalidInput,
+                          format_exception_message)
 from core.instance import Instance
 from core.step import Step
 
@@ -168,7 +169,7 @@ class Workflow(ExecutionElement):
             self.is_paused = False
             self.executor.send(None)
         except (StopIteration, AttributeError) as e:
-            logger.warning('Cannot resume workflow {0}. Reason: {1}'.format(self.ancestry, e))
+            logger.warning('Cannot resume workflow {0}. Reason: {1}'.format(self.ancestry, format_exception_message(e)))
             pass
 
     def resume_breakpoint_step(self):
@@ -178,7 +179,8 @@ class Workflow(ExecutionElement):
             logger.debug('Attempting to resume workflow {0} from breakpoint'.format(self.ancestry))
             self.executor.send(None)
         except (StopIteration, AttributeError) as e:
-            logger.warning('Cannot resume workflow {0} from breakpoint. Reason: {1}'.format(self.ancestry, e))
+            logger.warning('Cannot resume workflow {0} from breakpoint. '
+                           'Reason: {1}'.format(self.ancestry, format_exception_message(e)))
             pass
 
     def execute(self, start=None, start_input=''):
@@ -254,7 +256,7 @@ class Workflow(ExecutionElement):
             callbacks.WorkflowInputValidated.send(self)
         except InvalidInput as e:
             logger.error('Cannot change input to workflow {0}. '
-                         'Invalid input. Error: {1}'.format(self.name, str(e)))
+                         'Invalid input. Error: {1}'.format(self.name, format_exception_message(e)))
             callbacks.WorkflowInputInvalid.send(self)
 
     def __execute_step(self, step, instance):
@@ -272,7 +274,8 @@ class Workflow(ExecutionElement):
             callbacks.StepExecutionError.send(self, data=json.dumps(data))
             if self.total_risk > 0:
                 self.accumulated_risk += float(step.risk) / self.total_risk
-            logger.debug('Step {0} of workflow {1} executed with error {2}'.format(step, self.ancestry, e))
+            logger.debug('Step {0} of workflow {1} executed with error {2}'.format(step, self.ancestry,
+                                                                                   format_exception_message(e)))
 
     def __get_child_step_generator(self, tiered_step_str):
         params = tiered_step_str.split(':')
@@ -295,7 +298,7 @@ class Workflow(ExecutionElement):
                 instances[instance].shutdown()
             except Exception as e:
                 logger.error('Error caught while shutting down app instance. '
-                             'Device: {0}. Error {1}'.format(instance, e))
+                             'Device: {0}. Error {1}'.format(instance, format_exception_message(e)))
         result_str = {}
         for step, step_result in self.accumulator.items():
             try:
@@ -305,50 +308,6 @@ class Workflow(ExecutionElement):
                 result_str[step] = 'error: could not convert to JSON'
         callbacks.WorkflowShutdown.send(self, data=self.accumulator)
         logger.info('Workflow {0} completed. Result: {1}'.format(self.name, self.accumulator))
-
-    def get_cytoscape_data(self):
-        """Gets the cytoscape data for the Workflow object.
-        
-        Returns:
-            The cytoscape data for the Workflow.
-        """
-        output = []
-        for step in self.steps:
-            node_id = self.steps[step].name if self.steps[step].name is not None else 'None'
-            step_json = self.steps[step].as_json()
-            position = step_json.pop('position')
-            node = {"group": "nodes", "data": {"id": node_id, "parameters": step_json},
-                    "position": {pos: float(val) for pos, val in position.items()}}
-            output.append(node)
-            for next_step in self.steps[step].conditionals:
-                edge_id = str(node_id) + str(next_step.name)
-                if next_step.name in self.steps:
-                    node = {"group": "edges",
-                            "data": {"id": edge_id, "source": node_id, "target": next_step.name,
-                                     "parameters": next_step.as_json()}}
-                    output.append(node)
-        return output
-
-    def from_cytoscape_data(self, data):
-        """Reconstruct a Workflow object based on cytoscape data.
-        
-        Args:
-            data (JSON dict): The cytoscape data to be parsed and reconstructed into a Workflow object.
-        """
-        backup_steps = deepcopy(self.steps)
-        self.steps = {}
-        try:
-            for node in data:
-                if 'source' not in node['data'] and 'target' not in node['data']:
-                    step_data = node['data']
-                    step_name = step_data['parameters']['name']
-                    self.steps[step_name] = Step.from_json(step_data['parameters'],
-                                                           node['position'],
-                                                           parent_name=self.name,
-                                                           ancestry=self.ancestry)
-        except (UnknownApp, UnknownAppAction):
-            self.steps = backup_steps
-            raise
 
     def get_children(self, ancestry):
         """Gets the children Steps of the Workflow in JSON format.
@@ -382,6 +341,30 @@ class Workflow(ExecutionElement):
             The JSON representation of a Step object.
         """
         return {'name': self.name,
-                'accumulated_risk': "{0:.2f}".format(self.accumulated_risk * 100.00),
+                'steps': [step.as_json() for name, step in self.steps.items()],
+                'start': self.start_step,
                 'options': self.options.as_json(),
-                'steps': {name: step.as_json() for name, step in self.steps.items()}}
+                'accumulated_risk': "{0:.2f}".format(self.accumulated_risk * 100.00)
+                }
+
+    def from_json(self, data):
+        """Reconstruct a Workflow object based on JSON data.
+
+       Args:
+           data (JSON dict): The JSON data to be parsed and reconstructed into a Workflow object.
+       """
+        backup_steps = deepcopy(self.steps)
+        self.steps = {}
+        try:
+            if 'start' in data and data['start']:
+                self.start_step = data['start']
+            self.steps = {}
+            for step_json in data['steps']:
+                step = Step.from_json(step_json, parent_name=self.name, ancestry=self.ancestry, position=step_json['position'])
+                self.steps[step_json['name']] = step
+            # self.steps = {step_json['name']: Step.from_json(step_json, parent_name=self.name, ancestry=self.ancestry, position=step_json['position'])
+            #               for step_json in data['steps']}
+
+        except (UnknownApp, UnknownAppAction, InvalidInput):
+            self.steps = backup_steps
+            raise

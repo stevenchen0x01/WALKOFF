@@ -4,7 +4,7 @@ from core.case import callbacks
 from core.executionelement import ExecutionElement
 from core.filter import Filter
 from core.helpers import (get_flag, get_flag_api, InvalidElementConstructed, InvalidInput,
-                          inputs_to_xml, inputs_xml_to_dict, dereference_step_routing)
+                          inputs_to_xml, inputs_xml_to_dict, dereference_step_routing, format_exception_message)
 from core.validator import validate_flag_parameters, validate_parameter
 import logging
 logger = logging.getLogger(__name__)
@@ -61,29 +61,15 @@ class Flag(ExecutionElement):
             return get_flag(self.action)(**args)
         except InvalidInput as e:
             logger.error('Flag {0} has invalid input {1} which was converted to {2}. Error: {3}. '
-                         'Returning False'.format(self.action, data_in, data, str(e)))
+                         'Returning False'.format(self.action, data_in, data, format_exception_message(e)))
             callbacks.FlagError.send(self)
             return False
         except Exception as e:
             logger.error('Error encountered executing '
                          'flag {0} with arguments {1} and value {2}: '
-                         'Error {3}. Returning False'.format(self.action, self.args, data, str(e)))
+                         'Error {3}. Returning False'.format(self.action, self.args, data, format_exception_message(e)))
             callbacks.FlagError.send(self)
             return False
-
-    def __get_arg_type(self, arg_name):
-        for arg_api in self.args_api:
-            if arg_api['name'] == arg_name:
-                if 'type' in arg_api:
-                    return arg_api['type']
-                elif 'schema' in arg_api:
-                    return arg_api['schema']['type']
-                else:
-                    logger.error('Invalid api schema. This should never happen! Returning string type')
-                    return 'string'
-        else:
-            logger.error('Invalid api schema. This should never happen! Returning string type')
-            return 'string'
 
     def as_json(self, with_children=True):
         """Gets the JSON representation of a Flag object.
@@ -95,8 +81,7 @@ class Flag(ExecutionElement):
         Returns:
             The JSON representation of a Flag object.
         """
-        args = {arg_name: {'key': arg_name, 'value': arg_value, 'format': self.__get_arg_type(arg_name)}
-                for arg_name, arg_value in self.args.items()}
+        args = [{'name': arg_name, 'value': arg_value} for arg_name, arg_value in self.args.items()]
         out = {"action": self.action,
                "args": args}
         if with_children:
@@ -117,7 +102,7 @@ class Flag(ExecutionElement):
         Returns:
             The Flag object parsed from the JSON object.
         """
-        args = {arg_name: arg_value['value'] for arg_name, arg_value in json['args'].items()}
+        args = {arg['name']: arg['value'] for arg in json['args']}
         flag = Flag(action=json['action'], args=args, parent_name=parent_name, ancestry=ancestry)
         filters = [Filter.from_json(filter_element, parent_name=flag.name, ancestry=flag.ancestry)
                    for filter_element in json['filters']]

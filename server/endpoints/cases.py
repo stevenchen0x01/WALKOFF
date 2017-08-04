@@ -4,12 +4,11 @@ from flask import request, current_app
 from flask_security import auth_token_required, roles_accepted
 import core.case.database as case_database
 import core.case.subscription as case_subscription
-from server import forms
 from core.case.subscription import CaseSubscriptions, add_cases, delete_cases, \
     rename_case
 import core.config.config
 import core.config.paths
-from core.helpers import construct_workflow_name_key
+from core.helpers import construct_workflow_name_key, format_exception_message
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_ADDED, EVENT_JOB_REMOVED, \
     EVENT_SCHEDULER_START, EVENT_SCHEDULER_SHUTDOWN, EVENT_SCHEDULER_PAUSED, EVENT_SCHEDULER_RESUMED
 from server.return_codes import *
@@ -21,85 +20,93 @@ def read_all_cases():
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        return case_database.case_db.cases_as_json(), SUCCESS
+        return [case.as_json() for case in running_context.CaseSubscription.query.all()], SUCCESS
     return __func()
 
 
-def create_case(case):
+def create_case():
     from server.flaskserver import running_context
 
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        case_obj = CaseSubscriptions()
-        add_cases({"{0}".format(str(case)): case_obj})
-        case_obj = running_context.CaseSubscription.query.filter_by(name=case).first()
+        data = request.get_json()
+        case_name = data['name']
+        case_obj = running_context.CaseSubscription.query.filter_by(name=case_name).first()
         if case_obj is None:
-            running_context.db.session.add(running_context.CaseSubscription(name=case))
+
+            case = running_context.CaseSubscription(**data)
+            running_context.db.session.add(case)
             running_context.db.session.commit()
-            current_app.logger.debug('Case added: {0}'.format(case))
-            return case_subscription.subscriptions_as_json(), OBJECT_CREATED
+
+            current_app.logger.debug('Case added: {0}'.format(case_name))
+            return case.as_json(), OBJECT_CREATED
         else:
-            current_app.logger.warning('Cannot create case {0}. Case already exists.'.format(case))
+            current_app.logger.warning('Cannot create case {0}. Case already exists.'.format(case_name))
             return {"error": "Case already exists."}, OBJECT_EXISTS_ERROR
     return __func()
 
 
-def read_case(case):
+def read_case(case_id):
     from server.flaskserver import running_context
 
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
         case_obj = case_database.case_db.session.query(case_database.Case) \
-            .filter(case_database.Case.name == case).first()
+            .filter(case_database.Case.id == case_id).first()
         if case_obj:
-            return {'case': case_obj.as_json()}, SUCCESS
+            return case_obj.as_json(), SUCCESS
         else:
-            current_app.logger.error('Cannot read case {0}. Case does not exist.'.format(case))
+            current_app.logger.error('Cannot read case {0}. Case does not exist.'.format(case_id))
             return {'error': 'Case does not exist.'}, OBJECT_DNE_ERROR
     return __func()
 
 
-def update_case(case):
+def update_case():
     from server.flaskserver import running_context
 
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        form = forms.EditCaseForm(request.form)
-        case_obj = running_context.CaseSubscription.query.filter_by(name=case).first()
+        data = request.get_json()
+        case_obj = running_context.CaseSubscription.query.filter_by(id=data['id']).first()
         if case_obj:
-            if form.note.data:
-                case_database.case_db.edit_case_note(case, form.note.data)
-            if form.name.data:
-                rename_case(case, form.name.data)
-                case_obj.name = form.name.data
+            original_name = case_obj.name
+            if 'note' in data and data['note']:
+                case_obj.note = data['note']
+            if 'name' in data and data['name']:
+                rename_case(case_obj.name, data['name'])
+                case_obj.name = data['name']
                 running_context.db.session.commit()
-                current_app.logger.debug('Case name changed from {0} to {1}'.format(case, form.name.data))
-            return case_database.case_db.cases_as_json(), SUCCESS
+                current_app.logger.debug('Case name changed from {0} to {1}'.format(original_name, data['name']))
+            if 'subscription' in data:
+                case_obj.subscriptions = json.dumps(data['subscriptions'])
+                # TODO: edit it in the actual subscriptions
+            running_context.db.session.commit()
+            return case_obj.as_json(), SUCCESS
         else:
-            current_app.logger.error('Cannot update case {0}. Case does not exist.'.format(case))
+            current_app.logger.error('Cannot update case {0}. Case does not exist.'.format(data['id']))
             return {"error": "Case does not exist."}, OBJECT_DNE_ERROR
 
     return __func()
 
 
-def delete_case(case):
+def delete_case(case_id):
     from server.flaskserver import running_context
 
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        delete_cases([case])
-        case_obj = running_context.CaseSubscription.query.filter_by(name=case).first()
+        case_obj = running_context.CaseSubscription.query.filter_by(id=case_id).first()
         if case_obj:
+            delete_cases([case_obj.name])
             running_context.db.session.delete(case_obj)
             running_context.db.session.commit()
-            current_app.logger.debug('Case deleted {0}'.format(case))
-            return case_subscription.subscriptions_as_json(), SUCCESS
+            current_app.logger.debug('Case deleted {0}'.format(case_id))
+            return {}, SUCCESS
         else:
-            current_app.logger.error('Cannot delete case {0}. Case does not exist.'.format(case))
+            current_app.logger.error('Cannot delete case {0}. Case does not exist.'.format(case_id))
             return {"error": "Case does not exist."}, OBJECT_DNE_ERROR
     return __func()
 
@@ -110,8 +117,8 @@ def import_cases():
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        form = forms.ImportCaseForm(request.form)
-        filename = form.filename.data if form.filename.data else core.config.paths.default_case_export_path
+        data = request.get_json()
+        filename = data['filename'] if (data is not None and 'filename' in data and data['filename']) else core.config.paths.default_case_export_path
         if os.path.isfile(filename):
             try:
                 with open(filename, 'r') as cases_file:
@@ -119,16 +126,16 @@ def import_cases():
                     cases_file = cases_file.replace('\n', '')
                     cases = json.loads(cases_file)
                 case_subscription.add_cases(cases)
-                for case in cases.keys():
+                for case in cases:
                     running_context.db.session.add(running_context.CaseSubscription(name=case))
                     running_context.CaseSubscription.update(case)
-                    running_context.db.session.commit()
+                running_context.db.session.commit()
                 return {"cases": case_subscription.subscriptions_as_json()}, SUCCESS
             except (OSError, IOError) as e:
-                current_app.logger.error('Error importing cases from file {0}: {1}'.format(filename, e))
+                current_app.logger.error('Error importing cases from file {0}: {1}'.format(filename, format_exception_message(e)))
                 return {"error": "Error reading file."}, IO_ERROR
             except ValueError as e:
-                current_app.logger.error('Error importing cases from file {0}: Invalid JSON {1}'.format(filename, e))
+                current_app.logger.error('Error importing cases from file {0}: Invalid JSON {1}'.format(filename, format_exception_message(e)))
                 return {"error": "Invalid JSON file."}, INVALID_INPUT_ERROR
         else:
             current_app.logger.debug('Cases successfully imported from {0}'.format(filename))
@@ -142,15 +149,15 @@ def export_cases():
     @auth_token_required
     @roles_accepted(*running_context.user_roles['/cases'])
     def __func():
-        form = forms.ExportCaseForm(request.form)
-        filename = form.filename.data if form.filename.data else core.config.paths.default_case_export_path
+        data = request.get_json()
+        filename = data['filename'] if (data is not None and 'filename' in data and data['filename']) else core.config.paths.default_case_export_path
         try:
             with open(filename, 'w') as cases_file:
                 cases_file.write(json.dumps(case_subscription.subscriptions_as_json()))
             current_app.logger.debug('Cases successfully exported to {0}'.format(filename))
             return SUCCESS
         except (OSError, IOError) as e:
-            current_app.logger.error('Error exporting cases to {0}: {1}'.format(filename, e))
+            current_app.logger.error('Error exporting cases to {0}: {1}'.format(filename, format_exception_message(e)))
             return {"error": "Could not write to file."}, IO_ERROR
     return __func()
 

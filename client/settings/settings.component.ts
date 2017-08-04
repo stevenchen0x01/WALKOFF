@@ -28,12 +28,8 @@ export class SettingsComponent {
 
 	//User Data Table params
 	users: User[] = [];
-<<<<<<< HEAD
-	filterQuery: string = "";
-=======
 	displayUsers: User[] = [];
 	filterQuery: FormControl = new FormControl();
->>>>>>> c9f7d76e2e56dfd03070aef88e99a3035320a0e8
 
 	constructor(private settingsService: SettingsService, private modalService: NgbModal, private toastyService:ToastyService, private toastyConfig: ToastyConfig) {
 		this.toastyConfig.theme = 'bootstrap';

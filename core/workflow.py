@@ -291,18 +291,9 @@ class Workflow(ExecutionElement):
             self.send_callback('Workflow Input Invalid')
 
     def __execute_step(self, step, instance):
-        # TODO: These callbacks should be sent by the step, not the workflow. Func should only execute and handle risk
-        data = {"data": {"app": step.app,
-                         "action": step.action,
-                         "name": step.name,
-                         "input": step.input}}
         try:
             step.execute(instance=instance(), accumulator=self.accumulator)
-            data['data']['result'] = step.output.as_json()
-            self.send_callback('Step Execution Success', data)
         except Exception as e:
-            data['data']['result'] = step.output.as_json()
-            self.send_callback('Step Execution Error', data)
             if self.total_risk > 0:
                 self.accumulated_risk += float(step.risk) / self.total_risk
             logger.debug('Step {0} of workflow {1} executed with error {2}'.format(step, self.ancestry,

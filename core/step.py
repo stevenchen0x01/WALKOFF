@@ -222,12 +222,23 @@ class Step(ExecutionElement):
         Returns:
             The NextStep object to be executed.
         """
-        for next_step in self.conditionals:
-            next_step = next_step(self.output, accumulator)
-            if next_step is not None:
-                self.next_up = next_step
-                self.send_callback('Conditionals Executed')
-                return next_step
+        data = {"data": {"app": self.app,
+                         "action": self.action,
+                         "name": self.name,
+                         "input": self.input}}
+        try:
+            for next_step in self.conditionals:
+                next_step = next_step(self.output, accumulator)
+                if next_step is not None:
+                    self.next_up = next_step
+                    self.send_callback('Conditionals Executed')
+                    return next_step
+        except Exception as e:
+            data['data']['result'] = self.output
+            self.send_callback('Step Execution Error', data)
+        else:
+            data['data']['result'] = self.output.as_json()
+            self.send_callback('Step Execution Success', data)
 
     def to_xml(self, *args):
         """Converts the Step object to XML format.

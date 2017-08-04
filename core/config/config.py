@@ -47,6 +47,20 @@ def write_values_to_file(keys=None):
     with open(core.config.paths.config_path, 'w') as config_file:
         config_file.write(json.dumps(output, sort_keys=True, indent=4, separators=(',', ': ')))
 
+def dump_values():
+    keys = ['apps_path', 'app_apis', 'function_apis', 'flags', 'filters', 'workflows_path', 'templates_path', 'db_path', 'case_db_path', 'certificate_path',
+            'private_key_path', 'default_appdevice_export_path', 'default_case_export_path', 'keywords_path',
+            'logging_config_path', 'notifications', 'reinitialize_case_db_on_startup', 'tls_version', 'https',
+            'host', 'port', 'walkoff_db_type', 'case_db_type', 'num_threads', 'debug', 'default_server']
+    self = sys.modules[__name__]
+
+    output = {}
+    for key in keys:
+        if hasattr(core.config.paths, key):
+            output[key] = getattr(core.config.paths, key)
+        elif hasattr(self, key):
+            output[key] = getattr(self, key)
+    return output
 
 # Enables/Disables Browser Notifications
 notifications = "True"
@@ -88,7 +102,6 @@ threadpool_shutdown_timeout_sec = 3
 # Function Dict Paths/Initialization
 
 app_apis = {}
-
 
 def load_app_apis(apps_path=None):
     from core.helpers import list_apps

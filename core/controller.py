@@ -49,10 +49,11 @@ def initialize_threading():
     manager = multiprocessing.Manager()
     workflow_results_queue = multiprocessing.Queue()
     workflow_results_condition = multiprocessing.Condition()
+    config = core.config.config.dump_values()
 
     pool = multiprocessing.Pool(
         processes=core.config.config.num_processes, initializer=init_worker_globals,
-        initargs=(workflow_results_queue, workflow_results_condition, core.config.config, apps.App))
+        initargs=(workflow_results_queue, workflow_results_condition, config, apps.App))
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
 
@@ -86,6 +87,7 @@ def init_worker_globals(rq, rc, config, app):
     results_queue = rq
     results_condition = rc
     apps.App.registry = app.registry
+    config = namedtuple("config", config.keys())(*config.values())
     core.config.config.app_apis = config.app_apis
     core.config.config.function_apis = config.function_apis
     core.config.config.flags = config.flags

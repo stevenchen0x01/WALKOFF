@@ -78,8 +78,7 @@ class Step(ExecutionElement):
             self.templated = False
         self.output = None
         self.next_up = None
-        self.results_queue = None
-        self.results_cond = None
+        self.push_sock = None
 
     def reconstruct_ancestry(self, parent_ancestry):
         """Reconstructs the ancestry for a Step object. This is needed in case a workflow and/or playbook is renamed.
@@ -168,14 +167,21 @@ class Step(ExecutionElement):
         self.input = validate_app_action_parameters(self.input_api, new_input, self.app, self.action)
 
     def send_callback(self, callback_name, data={}):
-        sender = Step(name=self.name, app=self.app, action=self.action, inputs=self.input)
-        sender.ancestry = self.ancestry
+        # sender = Step(name=self.name, app=self.app, action=self.action, inputs=self.input)
+        data['sender']['name'] = self.name
+        data['sender']['app'] = self.app
+        data['sender']['action'] = self.action
+        data['sender']['inputs'] = self.input
+        data['sender']['ancestry'] = self.ancestry
+        data['callback_name'] = callback_name
+        # sender.ancestry = self.ancestry
         if self.results_queue:
-            # print("Step pushing callback: " + callback_name + " onto queue")
-            self.results_cond.acquire()
-            self.results_queue.put((callback_name, sender, data))
-            self.results_cond.notify_all()
-            self.results_cond.release()
+            print("Step pushing callback: " + callback_name + " onto queue")
+            self.push_sock.send_json(data)
+            # self.results_cond.acquire()
+            # self.results_queue.put((callback_name, sender, data))
+            # self.results_cond.notify_all()
+            # self.results_cond.release()
 
     def execute(self, instance, accumulator):
         """Executes a Step by calling the associated app function.

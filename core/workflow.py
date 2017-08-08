@@ -5,10 +5,10 @@ from os.path import join, isfile
 from xml.etree import ElementTree
 
 from core import options
+from core.case import callbacks
 from core.config import paths
 from core.executionelement import ExecutionElement
-from core.helpers import (construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp,
-                          InvalidInput,
+from core.helpers import (construct_workflow_name_key, extract_workflow_name, UnknownAppAction, UnknownApp, InvalidInput,
                           format_exception_message)
 from core.instance import Instance
 from core.step import Step
@@ -45,9 +45,7 @@ class Workflow(ExecutionElement):
         self.breakpoint_steps = []
         self.accumulator = {}
         self.uid = None
-        self.communication_queue = None
-        self.results_queue = None
-        self.results_cond = None
+        self.push_sock = None
 
     def reconstruct_ancestry(self, parent_ancestry):
         """Reconstructs the ancestry for a Workflow object. This is needed in case a workflow and/or playbook is renamed.
@@ -187,24 +185,32 @@ class Workflow(ExecutionElement):
             pass
 
     def send_callback(self, callback_name, data={}):
+        data['callback_name'] = callback_name
         if 'name' in data:
-            sender = Workflow(name=data['name'])
-            sender.uid = data['uid']
-            sender.ancestry = data['ancestry']
+            data['sender']['name'] = data['name']
+            data['sender']['uid'] = data['uid']
+            data['sender']['ancestry'] = data['ancestry']
+            # sender = Workflow(name=data['name'])
+            # sender.uid = data['uid']
+            # sender.ancestry = data['ancestry']
         else:
-            sender = Workflow(name=self.name)
-            sender.uid = self.uid
-            sender.ancestry = self.ancestry
-        if self.results_queue:
-            # print("Workflow pushing callback: "+callback_name+" onto queue")
-            self.results_cond.acquire()
-            self.results_queue.put((callback_name, sender, data))
-            self.results_cond.notify_all()
-            self.results_cond.release()
+            data['sender']['name'] = self.name
+            data['sender']['uid'] = self.uid
+            data['sender']['ancestry'] = self.ancestry
+            # sender = Workflow(name=self.name)
+            # sender.uid = self.uid
+            # sender.ancestry = self.ancestry
+        if self.push_sock:
+            print("Workflow pushing callback: "+callback_name+" onto queue")
+            self.push_sock.send_json(data)
+            # self.results_cond.acquire()
+            # self.results_queue.put((callback_name, sender, data))
+            # self.results_cond.notify_all()
+            # self.results_cond.release()
 
     def execute(self, start=None, start_input=''):
         """Executes a Workflow by executing all Steps in the Workflow list of Step objects.
-        
+
         Args:
             start (str, optional): The name of the first Step. Defaults to "start".
             start_input (str, optional): Input into the first Step. Defaults to an empty string.
@@ -222,20 +228,19 @@ class Workflow(ExecutionElement):
         first = True
         for step in steps:
             logger.debug('Executing step {0} of workflow {1}'.format(step, self.ancestry))
-            if self.communication_queue and not self.communication_queue.empty():
-                data = self.communication_queue.get_nowait()
-                if data == 'pause':
-                    res = self.communication_queue.get()
-                    if not res == 'resume':
-                        logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
+            # if self.communication_queue and not self.communication_queue.empty():
+            #     data = self.communication_queue.get_nowait()
+            #     if data == 'pause':
+            #         res = self.communication_queue.get()
+            #         if not res == 'resume':
+            #             logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
             if step is not None:
-                step.results_queue = self.results_queue
-                step.results_cond = self.results_cond
-                if step.name in self.breakpoint_steps:
-                    self.is_paused = True
-                    res = self.communication_queue.get()
-                    if not res == 'resume':
-                        logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
+                step.push_sock = self.push_sock
+                # if step.name in self.breakpoint_steps:
+                #     self.is_paused = True
+                #     res = self.communication_queue.get()
+                #     if not res == 'resume':
+                #         logger.warning('Did not receive correct resume message for workflow {0}'.format(self.name))
                 self.send_callback('Next Step Found')
                 device_id = (step.app, step.device)
                 if device_id not in instances:
@@ -336,50 +341,6 @@ class Workflow(ExecutionElement):
         self.send_callback('Workflow Shutdown', data)
         logger.info('Workflow {0} completed. Result: {1}'.format(self.name, self.accumulator))
 
-    def get_cytoscape_data(self):
-        """Gets the cytoscape data for the Workflow object.
-        
-        Returns:
-            The cytoscape data for the Workflow.
-        """
-        output = []
-        for step in self.steps:
-            node_id = self.steps[step].name if self.steps[step].name is not None else 'None'
-            step_json = self.steps[step].as_json()
-            position = step_json.pop('position')
-            node = {"group": "nodes", "data": {"id": node_id, "parameters": step_json},
-                    "position": {pos: float(val) for pos, val in position.items()}}
-            output.append(node)
-            for next_step in self.steps[step].conditionals:
-                edge_id = str(node_id) + str(next_step.name)
-                if next_step.name in self.steps:
-                    node = {"group": "edges",
-                            "data": {"id": edge_id, "source": node_id, "target": next_step.name,
-                                     "parameters": next_step.as_json()}}
-                    output.append(node)
-        return output
-
-    def from_cytoscape_data(self, data):
-        """Reconstruct a Workflow object based on cytoscape data.
-        
-        Args:
-            data (JSON dict): The cytoscape data to be parsed and reconstructed into a Workflow object.
-        """
-        backup_steps = deepcopy(self.steps)
-        self.steps = {}
-        try:
-            for node in data:
-                if 'source' not in node['data'] and 'target' not in node['data']:
-                    step_data = node['data']
-                    step_name = step_data['parameters']['name']
-                    self.steps[step_name] = Step.from_json(step_data['parameters'],
-                                                           node['position'],
-                                                           parent_name=self.name,
-                                                           ancestry=self.ancestry)
-        except (UnknownApp, UnknownAppAction):
-            self.steps = backup_steps
-            raise
-
     def get_children(self, ancestry):
         """Gets the children Steps of the Workflow in JSON format.
         
@@ -412,6 +373,30 @@ class Workflow(ExecutionElement):
             The JSON representation of a Step object.
         """
         return {'name': self.name,
-                'accumulated_risk': "{0:.2f}".format(self.accumulated_risk * 100.00),
+                'steps': [step.as_json() for name, step in self.steps.items()],
+                'start': self.start_step,
                 'options': self.options.as_json(),
-                'steps': {name: step.as_json() for name, step in self.steps.items()}}
+                'accumulated_risk': "{0:.2f}".format(self.accumulated_risk * 100.00)
+                }
+
+    def from_json(self, data):
+        """Reconstruct a Workflow object based on JSON data.
+
+       Args:
+           data (JSON dict): The JSON data to be parsed and reconstructed into a Workflow object.
+       """
+        backup_steps = deepcopy(self.steps)
+        self.steps = {}
+        try:
+            if 'start' in data and data['start']:
+                self.start_step = data['start']
+            self.steps = {}
+            for step_json in data['steps']:
+                step = Step.from_json(step_json, parent_name=self.name, ancestry=self.ancestry, position=step_json['position'])
+                self.steps[step_json['name']] = step
+            # self.steps = {step_json['name']: Step.from_json(step_json, parent_name=self.name, ancestry=self.ancestry, position=step_json['position'])
+            #               for step_json in data['steps']}
+
+        except (UnknownApp, UnknownAppAction, InvalidInput):
+            self.steps = backup_steps
+            raise

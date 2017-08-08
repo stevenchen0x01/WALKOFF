@@ -3,7 +3,7 @@ import ssl
 from os.path import isfile
 from core.config import config, paths
 from apps import *
-from server import app
+from gevent.wsgi import WSGIServer
 
 logger = logging.getLogger('startserver')
 
@@ -61,11 +61,21 @@ def run():
         print('Invalid port {0}. Port must be an integer'.format(config.port))
     else:
         host = config.host
+        if ssl_context:
+            server = WSGIServer((host, port), application=flaskserver.app, ssl_context=ssl_context)
+            proto = 'https'
+        else:
+            server = WSGIServer((host, port), application=flaskserver.app)
+            proto = 'http'
         setup_logger()
-        proto = 'https' if ssl_context else 'http'
         logger.info('Listening on host {0}://{1}:{2}'.format(proto, host, port))
 
-        app.run()
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            logger.info('Shutting down server')
+
+        # app.run()
 
 
 if __name__ == "__main__":

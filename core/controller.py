@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
-import multiprocessing
-import gc
+import zmq.green as zmq
+import gevent
 from copy import deepcopy
 from os import sep
 from xml.etree import ElementTree
@@ -16,7 +16,6 @@ import core.config.config
 import core.config.paths
 from core import workflow as wf
 from core.case import callbacks
-from core.case import subscription
 from core.helpers import (locate_workflows_in_directory, construct_workflow_name_key, extract_workflow_name,
                           UnknownAppAction, UnknownApp, InvalidInput, format_exception_message)
 
@@ -34,92 +33,109 @@ WORKFLOW_RUNNING = 1
 WORKFLOW_PAUSED = 2
 WORKFLOW_COMPLETED = 4
 
+ADDR = 'tcp://127.0.0.1:5555'
+PUSH_ADDR = 'tcp://127.0.0.1:5556'
+
+NUM_PROCESSES = core.config.config.num_processes
+
+pids = []
+parent_socket = None
+
 
 def initialize_threading():
-    """Initializes the threadpool.
+    """Initializes the processes.
     """
-    global pool
     global threading_is_initialized
-    global workflow_results_queue
-    global workflow_results_condition
-    global manager
+    global pids
 
-    import apps
+    print("Forking workers from PID {}".format(os.getpid()))
 
-    manager = multiprocessing.Manager()
-    workflow_results_queue = multiprocessing.Queue()
-    workflow_results_condition = multiprocessing.Condition()
-    config = core.config.config.dump_values()
+    for i in range(NUM_PROCESSES):
+        pid = gevent.fork()
+        print("Current PID {0}, returned pid {1}".format(os.getpid(), pid))
 
-    pool = multiprocessing.Pool(
-        processes=core.config.config.num_processes, initializer=init_worker_globals,
-        initargs=(workflow_results_queue, workflow_results_condition, config, apps.App))
+        if pid == 0:
+            print("Generated PID is 0")
+            print("os.getpid() = {}".format(os.getpid()))
+            execute_workflow_worker()
+        else:
+            print("Appending")
+            pids.append(pid)
+
     threading_is_initialized = True
     logger.debug('Controller threading initialized')
+
+    run_parent()
+
+
+def run_parent():
+    global parent_socket
+    print("Running parent")
+    ctx = zmq.Context()
+    parent_socket = ctx.socket(zmq.PUB)
+    parent_socket.bind(ADDR)
+    gevent.sleep(2)
 
 
 def shutdown_pool():
     """Shuts down the threadpool.
     """
-    global pool
     global threading_is_initialized
-    global workflow_results_condition
+    global parent_socket
 
     if threading_is_initialized:
-        workflow_results_condition.acquire()
-        workflow_results_condition.notify_all()
-        workflow_results_condition.release()
-
-        pool.close()
-        pool.join()
-        gc.collect()
+        first = True
+        for i in range(NUM_PROCESSES):
+            parent_socket.send_json({"exit": first})
+            first = False
+        for pid in pids:
+            os.waitpid(pid)
+            os.kill(pid, 9)
         threading_is_initialized = False
 
     logger.debug('Controller thread pool shutdown')
 
 
-def init_worker_globals(rq, rc, config, app):
-    global results_queue
-    global results_condition
-    import core.config.config
-    import apps
-
-    results_queue = rq
-    results_condition = rc
-    apps.App.registry = app.registry
-    config = namedtuple("config", config.keys())(*config.values())
-    core.config.config.app_apis = config.app_apis
-    core.config.config.function_apis = config.function_apis
-    core.config.config.flags = config.flags
-    core.config.config.filters = config.filters
-
-
-def execute_workflow_worker(workflow, subs, communication_queue, uid, start=None, start_input=None):
+def execute_workflow_worker():
     """Executes the workflow in a multi-threaded fashion.
-    
-    Args:
-        workflow (Workflow): The workflow to be executed.
-        uid (str): The unique identifier of the workflow
-        start (str, optional): Name of the first step to be executed in the workflow.
-        subs (Subscription): The current subscriptions. This is necessary for resetting the subscriptions.
-        start_input (dict, optional): The input to the starting step of the workflow
-        
-    Returns:
-        "Done" when the workflow has finished execution.
     """
-    # print("Worker received "+workflow.name+ " and starting to execute")
-    args = {'start': start, 'start_input': start_input}
-    subscription.set_subscriptions(subs)
-    workflow.uid = uid
-    workflow.communication_queue = communication_queue
-    workflow.results_queue = results_queue
-    workflow.results_cond = results_condition
-    try:
-        workflow.execute(**args)
-    except Exception as e:
-        logger.error('Caught error while executing workflow {0}. {1}'.format(workflow.name,
-                                                                     format_exception_message(e)))
-    return
+
+    print("Running command loop...")
+
+    ctx = zmq.Context()
+
+    recv_sock = ctx.socket(zmq.SUB)
+    recv_sock.connect(ADDR)
+    recv_sock.setsockopt(zmq.SUBSCRIBE, '')
+
+    push_sock = ctx.socket(zmq.PUSH)
+    push_sock.connect(PUSH_ADDR)
+
+    while True:
+        print("Child process about to wait on a workflow...")
+        workflow_json = recv_sock.recv_json()
+
+        print("Child process received a workflow")
+
+        if 'exit' in workflow_json:
+            if workflow_json['exit']:
+                push_sock.send_json({"exit": True})
+            os._exit(1)
+
+        uid = workflow_json['uid']
+        del workflow_json['uid']
+        start = workflow_json['start']
+        if 'start_input' in workflow_json:
+            start_input = workflow_json['start_input']
+            del workflow_json['start_input']
+
+        workflow = wf.Workflow()
+        workflow.from_json(workflow_json)
+        workflow.uid = uid
+        workflow.start = start
+        workflow.push_sock = push_sock
+
+        workflow.execute(start=start, start_input=start_input)
 
 
 class Controller(object):
@@ -405,41 +421,84 @@ class Controller(object):
 
     def execute_workflow(self, playbook_name, workflow_name, start=None, start_input=None):
         """Executes a workflow.
-        
+
         Args:
             playbook_name (str): Playbook name under which the workflow is located.
             workflow_name (str): Workflow to execute.
             start (str, optional): The name of the first step. Defaults to "start".
             start_input (dict, optional): The input to the starting step of the workflow
         """
-        global pool
+        global parent_socket
 
         key = _WorkflowKey(playbook_name, workflow_name)
         if key in self.workflows:
 
             workflow = self.workflows[key]
-            subs = deepcopy(subscription.subscriptions)
             uid = uuid.uuid4().hex
 
             # If threading has not been initialized, initialize it.
             if not threading_is_initialized:
                 initialize_threading()
 
-            communication_queue = manager.Queue()
-            self.workflow_queue[uid] = communication_queue
-            # print("Controller pushing workflow "+workflow.name+" onto queue")
             if start is not None:
                 logger.info('Executing workflow {0} for step {1}'.format(key, start))
             else:
                 logger.info('Executing workflow {0} with default starting step'.format(key, start))
             self.workflow_status[uid] = WORKFLOW_RUNNING
-            pool.apply_async(execute_workflow_worker, (workflow, subs, communication_queue, uid, start, start_input))
+
+            wf_json = workflow.as_json()
+            if start:
+                wf_json['start'] = start
+            if start_input:
+                wf_json['start_input'] = start_input
+            wf_json['uid'] = uid
+
+            parent_socket.send_json(wf_json)
+
             callbacks.SchedulerJobExecuted.send(self)
             # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
             return uid
         else:
             logger.error('Attempted to execute playbook which does not exist in controller')
             return None, 'Attempted to execute playbook which does not exist in controller'
+
+    # def execute_workflow(self, playbook_name, workflow_name, start=None, start_input=None):
+    #     """Executes a workflow.
+    #
+    #     Args:
+    #         playbook_name (str): Playbook name under which the workflow is located.
+    #         workflow_name (str): Workflow to execute.
+    #         start (str, optional): The name of the first step. Defaults to "start".
+    #         start_input (dict, optional): The input to the starting step of the workflow
+    #     """
+    #     global pool
+    #
+    #     key = _WorkflowKey(playbook_name, workflow_name)
+    #     if key in self.workflows:
+    #
+    #         workflow = self.workflows[key]
+    #         subs = deepcopy(subscription.subscriptions)
+    #         uid = uuid.uuid4().hex
+    #
+    #         # If threading has not been initialized, initialize it.
+    #         if not threading_is_initialized:
+    #             initialize_threading()
+    #
+    #         communication_queue = manager.Queue()
+    #         self.workflow_queue[uid] = communication_queue
+    #         # print("Controller pushing workflow "+workflow.name+" onto queue")
+    #         if start is not None:
+    #             logger.info('Executing workflow {0} for step {1}'.format(key, start))
+    #         else:
+    #             logger.info('Executing workflow {0} with default starting step'.format(key, start))
+    #         self.workflow_status[uid] = WORKFLOW_RUNNING
+    #         pool.apply_async(execute_workflow_worker, (workflow, subs, communication_queue, uid, start, start_input))
+    #         callbacks.SchedulerJobExecuted.send(self)
+    #         # TODO: Find some way to catch a validation error. Maybe pre-validate the input in the controller?
+    #         return uid
+    #     else:
+    #         logger.error('Attempted to execute playbook which does not exist in controller')
+    #         return None, 'Attempted to execute playbook which does not exist in controller'
 
     def get_workflow(self, playbook_name, workflow_name):
         """Get a workflow object.

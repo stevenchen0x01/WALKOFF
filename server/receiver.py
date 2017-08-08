@@ -1,6 +1,8 @@
 import threading
 import core.controller
 from core.case import callbacks
+import zmq.green as zmq
+import gevent
 
 t = None
 running = False
@@ -13,18 +15,26 @@ def send_callback(callback, sender, data):
         callback.send(sender)
 
 
-def receive():
+def receive(pull_sock):
+
     while True:
 
-        core.controller.workflow_results_condition.acquire()
-        while core.controller.workflow_results_queue.empty():
-            # print("queue is empty, receiver waiting on condition")
-            core.controller.workflow_results_condition.wait(timeout=1)
-        callback, sender, data = core.controller.workflow_results_queue.get()
-        core.controller.workflow_results_condition.release()
+        print("In receiver loop")
 
-        if callback is None:
-            break
+        message = pull_sock.recv_json()
+
+        if 'exit' in message:
+            print("Receiver returning")
+            return
+
+        callback = message['callback_name']
+        sender = message['sender']
+        data = message
+
+        # callback, sender, data = core.controller.workflow_results_queue.get()
+
+        # if callback is None:
+        #     break
 
         if callback == "Workflow Execution Start":
             send_callback(callbacks.WorkflowExecutionStart, sender, data)
@@ -57,8 +67,14 @@ def start_receiver():
     global running
 
     if not running:
+
+        ctx = zmq.Context()
+        pull_sock = ctx.socket(zmq.PULL)
+        pull_sock.connect(core.controller.PUSH_ADDR)
+        gevent.sleep(2)
+
         running = True
-        t = threading.Thread(target=receive)
+        t = threading.Thread(target=receive, args=(pull_sock,))
         t.start()
 
 
@@ -68,9 +84,4 @@ def stop_receiver():
 
     if running:
         running = False
-        core.controller.workflow_results_condition.acquire()
-        core.controller.workflow_results_queue.put((None, None, None))
-        core.controller.workflow_results_condition.notify()
-        core.controller.workflow_results_condition.release()
-
         t.join()

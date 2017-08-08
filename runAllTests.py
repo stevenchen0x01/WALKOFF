@@ -1,12 +1,10 @@
 import unittest
 import sys
-from multiprocessing import freeze_support
 from tests import suites as test_suites
 import logging
 
 
 def run_tests():
-    freeze_support()
     logging.disable(logging.CRITICAL)
     ret = True
     print('Testing Workflows:')
